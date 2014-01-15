@@ -1,8 +1,19 @@
+﻿Exercise 1
+
+Task 1:
+Doors not closing when lift moves
+lift crushing people to death in doors 
+no connection between lifts
+osv
+
+Task 2:
+Bruker Git
+
+Task 3:
 Why do we use concurrent execution (multithreading/multiprocessing, or the like)? List a fair few reasons.
 - Bruke flere kjerner
 - Gjøre oppgaver som ikke må gjøres i rekefølge samtidig
 - En tråd per oppgave kan gjøre programmet enklere
--
 
 How can adding more concurrent tasks make programming simpler? (Think about translation from idea to code...)
 En tråd\prosses pr oppgave. Sterkere skiller mellom oppgavene
@@ -11,17 +22,24 @@ And how can it make programming more difficult? (Maybe come back to this after y
 Synkornisering mellom tråder. 
 
 What are the differences between processes, threads, green threads, and fibers?
+
 process:
 Separat minneområde pr prosses. Kjøretid bestemt av OS
+- en prosess kan bestå av flere tråder (avh. Av OS)
+- Inneholder programm koden og nåværende aktivitet
 
 thread:
 Del minneområde mellom trådene. Kjørtetid bestemes av OS
+- minste sekvens av programmerte instruksoner som kan behandles uavhengig av en OS planlegger.
+- bruker pre-emptive multitasking (interrupts)
 
 green thread:
 Trådene kjører i en VM, og kjøretid bestemmes av prossesen.
 
+
 fibers:
 Ikke preemptive. managed av userspace. 
+- bruker co-opertive multitasking
 
 Which one of these do pthread_create() (C/POSIX), threading.Thread() (Python), go (Go) create?
 pthread_create:
