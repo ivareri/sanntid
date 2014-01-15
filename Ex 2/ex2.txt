@@ -1,0 +1,18 @@
+﻿Exercise 2
+
+An atomic (linearizable, indivisible or uninterruptible) operation:
+appear to the rest of the system to happen instantaneously
+is guaranteed to be isolated from concurrent processes
+Commonly have a succeed-or-fail definition
+
+Semaphore:
+A variable/abstract data type used for controlling the access, by different processes, to a common resource.
+Prevents race conditions by recording how much of the resource is available
+(counting semaphores and binary semaphores)   
+
+Mutex (mutual exclusion):
+The requirement of ensuring that no two processes/threads are accessing a shared resource (this period is called a critical section) at the same time.
+
+Critical section:
+The period of time where a process/thread accesses a shared resource that mustn't be accessed by more than one process/thread at the time.
+
