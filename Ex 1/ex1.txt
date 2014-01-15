@@ -1,0 +1,44 @@
+Why do we use concurrent execution (multithreading/multiprocessing, or the like)? List a fair few reasons.
+- Bruke flere kjerner
+- Gjøre oppgaver som ikke må gjøres i rekefølge samtidig
+- En tråd per oppgave kan gjøre programmet enklere
+-
+
+How can adding more concurrent tasks make programming simpler? (Think about translation from idea to code...)
+En tråd\prosses pr oppgave. Sterkere skiller mellom oppgavene
+
+And how can it make programming more difficult? (Maybe come back to this after you have worked on part 4 of this exercise)
+Synkornisering mellom tråder. 
+
+What are the differences between processes, threads, green threads, and fibers?
+process:
+Separat minneområde pr prosses. Kjøretid bestemt av OS
+
+thread:
+Del minneområde mellom trådene. Kjørtetid bestemes av OS
+
+green thread:
+Trådene kjører i en VM, og kjøretid bestemmes av prossesen.
+
+fibers:
+Ikke preemptive. managed av userspace. 
+
+Which one of these do pthread_create() (C/POSIX), threading.Thread() (Python), go (Go) create?
+pthread_create:
+tråd
+
+threading.Thread:
+thread med GIL
+
+go:
+green thread
+
+How does pythons Global Interpreter Lock (GIL) influence the way a python Thread behaves?
+Kan ikke kjøre to tråder samtidig. Dvs får ikke utbyte av multiprossesorsystem
+
+With this in mind: What is the workaround for the GIL (Hint: it's another module)? How do you then share resources (variables/data)?
+multiprocessor biblioteke. dele ressursa med pipes, queues og shared memory
+
+What does func GOMAXPROCS(n int) int change?
+
+Max antall CPU's som go bruker.
