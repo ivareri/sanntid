@@ -17,47 +17,47 @@ void main(string[] args) {
 		"host|h", &ip, 
 		"port|p", &port, 
 		"listen-port|lp", &listen_port, 
-		"listen_ip|lip", &listen_ip
+		"listen_ip|l", &listen_ip
 	);
 	debug(THREAD)
 		writefln("Starting server");
-	spawn(&tcp_connect(ip, port, listen_ip, listen_port));
-	debug(THREAD)
-		writefln("Starting client");
+	spawn(&tcp_server, listen_ip, listen_port);
 	auto message = receiveOnly!bool();
 	debug(THREAD)
 		writefln("Server started");
-	spawn(&tcp_server(listen_port));
 
+	debug(THREAD)
+		writefln("Starting client");
+//	spawn(&tcp_connect, ip, port, listen_ip, listen_port);
+	writefln("Main done");
 }
 
 
-void tcp_server(ushort listen_port) {
+void tcp_server(string listen_ip, ushort listen_port) {
 	Socket listener = new TcpSocket;
 	scope(exit) listener.close();
 	assert(listener.isAlive);
-	listener.blocking = true;
+//	listener.blocking = true;
 	debug(TCP)
 		writefln("Setting listen address and port");
 
-	listener.bind(new InternetAddress(listen_port));
-	listener.listen(10);
+	listener.bind(new InternetAddress(listen_ip, listen_port));
+	listener.listen(5);
 	debug(TCP)
 		writefln("Entering socket while loop");
 	debug(THREAD)
 		writefln("SERVER: started ok");	
 	ownerTid.send(true);
+	Socket sock = listener.accept();
+	assert(sock.isAlive);
+	debug(TCP) 
+		writefln("DEBUG: Incoming connection");
 	while(true) {
-		Socket sock = listener.accept();
-		assert(sock.isAlive);
-		debug(TCP) 
-			writefln("DEBUG: Incoming connection");
-
-		char[] buffer;
+		char[1024] buffer;
 		sock.receive(buffer);
 		writefln("From server: %s", buffer);
-		sock.close();
 	}
+	sock.close()
 }
 
 void tcp_connect(string ip, ushort port, string listen_ip, ushort listen_port) {
@@ -72,7 +72,10 @@ void tcp_connect(string ip, ushort port, string listen_ip, ushort listen_port) {
 	char[1024] line;
 	sock.receive(line);
 	writefln("string: %s", line);
-	sock.send("Connect to: %s:%s", listen_ip, listen_port);
+	auto message = format("Connect to: %s:%s", listen_ip, listen_port);
+	debug(TCP)
+		writefln("Sending: %s", message);
+	sock.send(message);
 
 /*	
 	for(int i=0; i < 5; i++) {
