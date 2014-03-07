@@ -10,42 +10,50 @@ procedure exercise7 is
 
    protected type Transaction_Manager (N : Positive) is
       entry       Finished;
-      function    Commit return Boolean;
+		entry			Wait_Until_Aborted;
+--      function    Commit return Boolean;
       procedure   Signal_Abort;
    private
       Finished_Gate_Open   : Boolean := False;
       Aborted              : Boolean := False;
-      Will_Commit          : Boolean := True;
+--      Will_Commit          : Boolean := True;
    end Transaction_Manager;
    protected body Transaction_Manager is
       entry Finished when Finished_Gate_Open or Finished'Count = N is
       begin
 
 			if Finished'Count = N - 1 then
-				Finished_Gate_Open := True;
-				Will_Commit := True;
+			  Finished_Gate_Open := True;
+--			  Will_Commit := True;
 			end if;
 
-			if Aborted then
-				Will_Commit := False;
-			end if;
+--			if Aborted then
+--				Will_Commit := False;
+--			end if;
 
 			if Finished'Count = 0 then
-				Finished_Gate_Open := False;
+			  Finished_Gate_Open := False;
+			  Aborted := False;
+			end if;
+		end Finished;
+	
+		entry Wait_Until_Aborted when Aborted is
+		begin
+			if Wait_Until_Aborted'Count = 0 then
 				Aborted := False;
 			end if;
+		end Wait_Until_Aborted;
 
-		end Finished;
 		procedure Signal_Abort is
 		begin
 			Aborted := True;
 		end Signal_Abort;
 
-		function Commit return Boolean is
-		begin
-			return Will_Commit;
-		end Commit;
-      
+--		function Commit return Boolean is
+--		begin
+--			return Will_Commit;
+--		end Commit;
+
 	end Transaction_Manager;
 
 
@@ -77,22 +85,23 @@ procedure exercise7 is
       loop
          Put_Line ("Worker" & Integer'Image(Initial) & " started round" & Integer'Image(Round_Num));
          Round_Num := Round_Num + 1;
-			begin
-				Num := Unreliable_Slow_Add(Prev);
-				Manager.Finished;
-			exception
-				when Count_Failed =>
-					Manager.Signal_Abort;
+			select 
+				Manager.Wait_Until_Aborted;
+					Prev := Num;
+					Num := Num + 5;
+					Put_Line("Worker" & Integer'Image(Initial) & " comitting " & Integer'Image(Num));
+			then abort
+				begin
+					Num :=	Unreliable_Slow_Add(Num);
 					Manager.Finished;
-			end;
-         if Manager.Commit = True then
-            Put_Line ("  Worker" & Integer'Image(Initial) & " comitting" & Integer'Image(Num));
-         else
-            Put_Line ("  Worker" & Integer'Image(Initial) &
-                      " reverting from" & Integer'Image(Num) &
-                      " to" & Integer'Image(Prev));
-				Num := Prev;
-         end if;
+					Put_Line("Worker" & Integer'Image(Initial) & " comitting " & Integer'Image(Num));
+				exception
+					when Count_Failed =>
+						begin
+							Manager.Signal_Abort;
+						end;
+				end;
+			end select;
 
          Prev := Num;
          delay 0.5;
