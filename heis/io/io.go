@@ -36,13 +36,13 @@ type Light struct {
 	on    bool
 }
 
-type Status struct {
+type FloorStatus struct {
 	running   bool
 	floor     uint
 	direction bool
 }
 
-func init(floorOrder chan uint, floor chan uint) {
+func init(floorOrder chan uint, floor chan FloorStatus) {
 	// Init hardware
 	if !io_init() {
 		log.Fatal("Error during HW init")
@@ -67,10 +67,10 @@ func init(floorOrder chan uint, floor chan uint) {
 	return true
 }
 
-func runElevator(floorOrder chan uint, floor chan Status) {
+func runElevator(floorOrder chan uint, floor chan FloorStatus) {
 	floorSeen := make(chan uint)
 	var currentFloor, floorStop uint = 0
-	var lastFloor Status
+	var lastFloor FloorStatus
 	lastFloor.direction = false
 
 	go readFloorSensor(floorSeen)
@@ -135,108 +135,8 @@ func runMotor(speed uint, direction bool) {
 	io_write_analog(MOTOR, 2048+4*speed)
 }
 
-func readFloorsensor(floor chan uint) {
-	currenFloor := -1
-	if io_read_bit(SENSOR1) && (currentFloor != 1) {
-		setFloorLight(1)
-		floor <- 1
-	} else if io_read_bit(SENSOR2) && (currentFloor != 2) {
-		setFloorLight(2)
-		floor <- 2
-	} else if io_read_bit(SENSOR3) && (currentFloor != 3) {
-		setFloorLight(3)
-		floor <- 3
-	} else if io_read_bit(SENSOR4) && (currentFloor != 4) {
-		setFloorLight(4)
-		floor <- 4
-	} else if currentFloor != 0 {
-		floor <- 0
-	}
-}
-
-func setFloorLight(floor int) {
-	if (floor < 1) || (floor > 4) {
-		log.Fatal("Floor out of range: ", floor)
-	}
-	switch floor {
-	case 1:
-		io_clear_bit(FLOOR_IND1)
-		io_clear_bit(FLOOR_IND2)
-	case 2:
-		io_set_bit(FLOOR_IND1)
-		io_clear_bit(FLOOR_IND2)
-	case 3:
-		io_clear_bit(FLOOR_IND1)
-		io_set_bit(FLOOR_IND2)
-	case 4:
-		io_set_bit(FLOOR_IND1)
-		io_set_bit(FLOOR_IND2)
-	}
-}
-func readButtons(keypress chan Button) {
-
-	floor_command := [4]int{FLOOR_COMMAND1,
-		FLOOR_COMMAND2,
-		FLOOR_COMMAND3,
-		FLOOR_COMMAND4}
-
-	floorUp := [3]int{
-		FLOOR_UP1,
-		FLOOR_UP2,
-		FLOOR_UP3}
-
-	floorDown := [3]int{
-		FLOOR_DOWN2,
-		FLOOR_DOWN3,
-		FLOOR_DOWN4}
-
-	lastPress := create(map[int]bool)
-
-	for {
-		for i := uint; i <= MAXFLOOR; i++ {
-			if io_read_bit(floorCommand[i]) && !lastPress[floorCommand[i]] {
-				lastPress[floorCommand[i]] = true
-				keypress <- Button{i + 1, command}
-			} else if !io_read_bit(floorCommand[i]) && lastPress[floorCommand[i]] {
-				lastPress[floorCommand[i]] = false
-			}
-		}
-
-		for i := uint; i < MAXFLOOR; i++ {
-			if io_read_bit(floorUP[i]) && !lastPress[floorUP[i]] {
-				lastPress[floorUP[i]] = true
-				keypress <- Button{i, up}
-			} else if !io_read_bit(floorUP[i]) && lastPress[floorUP[i]] {
-				lastPress[floorUP[i]] = false
-			}
-		}
-
-		for i := uint; i < MAXFLOOR; i++ {
-			if io_read_bit(floorDown[i]) && !lastPress[floorDown[i]] {
-				lastPress[floorDown[i]] = true
-				keypress <- Button{i + 2, down}
-			} else if !io_read_bit(floorDown[i]) && lastPress[floorDown[i]] {
-				lastPress[floorDown[i]] = false
-			}
-		}
-
-		if io_read_bit(STOP) && !lastPress[STOP] {
-			lastPress[STOP] = true
-			keypress <- Button{0, stop}
-		} else if (!io_read_bit(STOP)) && (lastPress[STOP]) {
-			lastPress[STOP] = false
-		}
-
-		if io_read_bit(OBSTRUCTION) && !lastPress[OBSTRUCTION] {
-			lastPress[OBSTRUCTION] = true
-			keypress <- Button{0, obstruction}
-		} else if !io_read_bit(OBSTRUCTION) && lastPress[OBSTRUCTION] {
-			lastPress[OBSTRUCTION] = false
-		}
-	}
-}
-
 func setLight(light Light) {
+	// TODO: ugly beast. Should be a cleaner way of doing this
 	if light.on {
 		switch light.floor {
 		case 1:
@@ -310,6 +210,26 @@ func setLight(light Light) {
 	}
 }
 
+func setFloorLight(floor int) {
+	if (floor < 1) || (floor > 4) {
+		log.Fatal("Floor out of range: ", floor)
+	}
+	switch floor {
+	case 1:
+		io_clear_bit(FLOOR_IND1)
+		io_clear_bit(FLOOR_IND2)
+	case 2:
+		io_set_bit(FLOOR_IND1)
+		io_clear_bit(FLOOR_IND2)
+	case 3:
+		io_clear_bit(FLOOR_IND1)
+		io_set_bit(FLOOR_IND2)
+	case 4:
+		io_set_bit(FLOOR_IND1)
+		io_set_bit(FLOOR_IND2)
+	}
+}
+
 func emergencyStop(bool stop) {
 	if stop {
 		io_set_bit(LIGHT_STOP)
@@ -323,5 +243,88 @@ func doorOpen(bool open) {
 		io_set_bit(DOOR_OPEN)
 	} else {
 		io_clear_bit(DOOR_OPEN)
+	}
+}
+
+func readButtons(keypress chan Button) {
+
+	floor_command := [4]int{
+		FLOOR_COMMAND1,
+		FLOOR_COMMAND2,
+		FLOOR_COMMAND3,
+		FLOOR_COMMAND4}
+
+	floorUp := [3]int{
+		FLOOR_UP1,
+		FLOOR_UP2,
+		FLOOR_UP3}
+
+	floorDown := [3]int{
+		FLOOR_DOWN2,
+		FLOOR_DOWN3,
+		FLOOR_DOWN4}
+
+	lastPress := create(map[int]bool)
+
+	for {
+		for i := uint; i <= MAXFLOOR; i++ {
+			if io_read_bit(floorCommand[i]) && !lastPress[floorCommand[i]] {
+				lastPress[floorCommand[i]] = true
+				keypress <- Button{i + 1, command}
+			} else if !io_read_bit(floorCommand[i]) && lastPress[floorCommand[i]] {
+				lastPress[floorCommand[i]] = false
+			}
+		}
+
+		for i := uint; i < MAXFLOOR; i++ {
+			if io_read_bit(floorUP[i]) && !lastPress[floorUP[i]] {
+				lastPress[floorUP[i]] = true
+				keypress <- Button{i, up}
+			} else if !io_read_bit(floorUP[i]) && lastPress[floorUP[i]] {
+				lastPress[floorUP[i]] = false
+			}
+		}
+
+		for i := uint; i < MAXFLOOR; i++ {
+			if io_read_bit(floorDown[i]) && !lastPress[floorDown[i]] {
+				lastPress[floorDown[i]] = true
+				keypress <- Button{i + 2, down}
+			} else if !io_read_bit(floorDown[i]) && lastPress[floorDown[i]] {
+				lastPress[floorDown[i]] = false
+			}
+		}
+
+		if io_read_bit(STOP) && !lastPress[STOP] {
+			lastPress[STOP] = true
+			keypress <- Button{0, stop}
+		} else if (!io_read_bit(STOP)) && (lastPress[STOP]) {
+			lastPress[STOP] = false
+		}
+
+		if io_read_bit(OBSTRUCTION) && !lastPress[OBSTRUCTION] {
+			lastPress[OBSTRUCTION] = true
+			keypress <- Button{0, obstruction}
+		} else if !io_read_bit(OBSTRUCTION) && lastPress[OBSTRUCTION] {
+			lastPress[OBSTRUCTION] = false
+		}
+	}
+}
+
+func readFloorsensor(floor chan uint) {
+	currenFloor := -1
+	if io_read_bit(SENSOR1) && (currentFloor != 1) {
+		setFloorLight(1)
+		floor <- 1
+	} else if io_read_bit(SENSOR2) && (currentFloor != 2) {
+		setFloorLight(2)
+		floor <- 2
+	} else if io_read_bit(SENSOR3) && (currentFloor != 3) {
+		setFloorLight(3)
+		floor <- 3
+	} else if io_read_bit(SENSOR4) && (currentFloor != 4) {
+		setFloorLight(4)
+		floor <- 4
+	} else if currentFloor != 0 {
+		floor <- 0
 	}
 }
