@@ -18,7 +18,7 @@ const (
 )
 
 type Button struct {
-	floor  int
+	floor  uint
 	button buttonType
 }
 
@@ -33,9 +33,15 @@ const (
 )
 
 type Light struct {
-	floor int
+	floor uint
 	light lightType
 	on    bool
+}
+
+type Status struct {
+	running   bool
+	floor     uint
+	direction bool
 }
 
 func init(floorOrder chan uint, floor chan uint) {
@@ -63,58 +69,59 @@ func init(floorOrder chan uint, floor chan uint) {
 	return true
 }
 
-func runElevator(floorOrder chan uint, floor chan uint) {
+func runElevator(floorOrder chan uint, floor chan Status) {
 	floorSeen := make(chan uint)
-	var currentFloor, lastFloor, floorStop uint = 0
-	direction := false
-	go readFloorSensor(floorSeen)
+	var currentFloor, floorStop uint = 0
+	var lastFloor Status
+	lastFloor.direction = false
 
+	go readFloorSensor(floorSeen)
 	// Go to closest floor downwards.
 	// Do this to get a known state
-	runMotor(DEFAULTSPEED, direction)
+	runMotor(DEFAULTSPEED, lastFloor.direction)
 	for {
 		currentFloor <- floorSeen
 		if currentFloor != 0 {
 			break
 		}
 	}
-	floor <- currentFloor
-	runMotor(0, direction)
+	lastFloor.floor = currentFloor
+	lastFloor.running = false
+	floor <- lastFloor
+	runMotor(0, lastFloor.direction)
 
 	for {
 		select {
 		case newFloorStop := <-floorOrder:
-			if newFloorStop < 1 || newFloorStop > 4 {
+			if newFloorStop < 1 || newFloorStop > MAXFLOOR {
 				log.Println("FloorOrder out of range:", newFloorStop)
 			} else {
 				floorStop = newFloorStop
 			}
 		case currentFloor <- floorSeen:
 			if currentFloor == floorStop {
-				runMotor(0, direction)
+				runMotor(0, lastFloor.direction)
 				floorStop = 0
 			}
 			if currentFloor > 1 && currentFloor < MAXFLOOR {
-				lastFloor = currentFloor
-				floor <- lastFloor // TODO: finn på noka lurt her, som å sende en struct med heisstatus
+				lastFloor.floor = currentFloor
+				floor <- lastFloor
 			}
 		default:
 			if floorStop == 0 {
 				break
 			}
-			if floorStop < lastFloor {
-				direction = false
+			if floorStop < lastFloor.floor {
+				lastFloor.direction = false
 			} else {
-				direction = true
+				lastFloor.direction = true
 			}
-			runMotor(DEFAULTSPEED, direction)
+			runMotor(DEFAULTSPEED, lastFloor.direction)
 		}
 	}
 }
 
 func runMotor(speed uint, direction bool) {
-	//TODO: Should save last direction for breaking)
-
 	// Invert direction in order to break elevator before stopping
 	if speed == 0 {
 		direction = !direction
