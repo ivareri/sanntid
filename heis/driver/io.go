@@ -4,27 +4,44 @@ import (
 	"log"
 )
 
+const MAXFLOOR = 4
+const DEFAULTSPEED = 200
+
 type buttonType int
 
 const (
-	up Button = itoa + 1
+	up buttonType = itoa + 1
 	down
 	command
 	stop
 	obstruction
 )
 
-type floorButton struct {
+type Button struct {
 	floor  int
 	button buttonType
 }
 
-func init(floor chan uint) {
+type lightType int
+const (
+	up lightTYpe = itoa +1
+	down
+	command
+	stop
+	door
+)
+type Light struct {
+	floor int
+	light lightType
+	on bool
+}
+
+func init(floorOrder chan uint, floor chan uint) {
 	// Init hardware
 	if !io_init() {
 		log.Fatal("Error during HW init")
 	}
-
+	// turn off all lights
 	io_clear_bit(LIGHT_STOP)
 	io_clear_bit(DOOR_OPEN)
 	io_clear_bit(LIGHT_COMMAND1)
@@ -38,18 +55,20 @@ func init(floor chan uint) {
 	io_clear_bit(LIGHT_DOWN3)
 	io_clear_bit(LIGHT_DOWN4)
 
-	go readFloorSensor(floor)
-	runMotor(200, false)
+	go runElevator(floorOrder, floor)
+	// wait for eleavtor to arrive at a floor
 	<-floor
-	runMotor(0, false)
-	// Return success.
 	return true
 }
+
 func runElevator(floorOrder chan uint, floor chan uint) {
 	floorSeen := make(chan uint)
 	var currentFloor, lastFloor, floorStop uint = 0
 	direction := false
 	go readFloorSensor(floorSeen)
+
+	// Go to closest floor downwards.
+	// Do this to get a known state
 	runMotor(DEFAULTSPEED, direction)
 	for {
 		currentFloor <- floorSeen
@@ -57,7 +76,9 @@ func runElevator(floorOrder chan uint, floor chan uint) {
 			break
 		}
 	}
+	floor <- currentFloor
 	runMotor(0, direction)
+
 	for {
 		select {
 		case newFloorStop := <-floorOrder:
@@ -143,8 +164,32 @@ func setFloorLight(floor int) {
 	}
 }
 
-func setLight() {
-	// write some fancy code
+func setLight(light Light) {
+// not done yet
+		io_set_bit(LIGHT_COMMAND1)
+		io_set_bit(LIGHT_COMMAND2)
+		io_set_bit(LIGHT_COMMAND3)
+		io_set_bit(LIGHT_COMMAND4)
+		io_set_bit(LIGHT_UP1)
+		io_set_bit(LIGHT_UP2)
+		io_set_bit(LIGHT_DOWN2)
+		io_set_bit(LIGHT_UP3)
+		io_set_bit(LIGHT_DOWN3)
+		io_set_bit(LIGHT_DOWN4)
+		io_set_bit(DOOR_OPEN)
+
+		io_clear_bit(LIGHT_COMMAND1)
+		io_clear_bit(LIGHT_COMMAND2)
+		io_clear_bit(LIGHT_COMMAND3)
+		io_clear_bit(LIGHT_COMMAND4)
+		io_clear_bit(LIGHT_UP1)
+		io_clear_bit(LIGHT_UP2)
+		io_clear_bit(LIGHT_DOWN2)
+		io_clear_bit(LIGHT_UP3)
+		io_clear_bit(LIGHT_DOWN3)
+		io_clear_bit(LIGHT_DOWN4)
+		io_clear_bit(DOOR_OPEN)
+
 }
 
 func emergencyStop(bool stop) {
