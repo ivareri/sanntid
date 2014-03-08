@@ -45,36 +45,53 @@ func init(floor chan uint) {
 	// Return success.
 	return true
 }
-func runElevator(floorOrder chan uint, lastFloor chan uint) {
-	floor := make(chan uint)
-	var currentFloor uint = 0
-	var floorStop [4]bool = false
-	go readFloorSensor(floor)
-	runMotor(200, false)
+func runElevator(floorOrder chan uint, floor chan uint) {
+	floorSeen := make(chan uint)
+	var currentFloor, lastFloor, floorStop uint = 0
+	direction := false
+	go readFloorSensor(floorSeen)
+	runMotor(DEFAULTSPEED, direction)
 	for {
-		currentFloor<-floor
+		currentFloor <- floorSeen
 		if currentFloor != 0 {
 			break
 		}
 	}
-	runMotor(0, false)
-	lastFloor <- currentFloor
+	runMotor(0, direction)
 	for {
 		select {
-		case i := <-floorOrder:
-			floorStop[i] = True
-		case i := <-lastFloor:
-			if floorStop[i] {
+		case newFloorStop := <-floorOrder:
+			if newFloorStop < 1 || newFloorStop > 4 {
+				log.Println("FloorOrder out of range:", newFloorStop)
+			} else {
+				floorStop = newFloorStop
+			}
+		case currentFloor <- floorSeen:
+			if currentFloor == floorStop {
 				runMotor(0, direction)
+				floorStop = 0
+			}
+			if currentFloor > 1 && currentFloor < MAXFLOOR {
+				lastFloor = currentFloor
+				floor <- lastFloor // TODO: finn på noka lurt her, som å sende en struct med heisstatus
 			}
 		default:
-			// noka lurt for å kjøre\stoppe heis
+			if floorStop == 0 {
+				break
+			}
+			if floorStop < lastFloor {
+				direction = false
+			} else {
+				direction = true
+			}
+			runMotor(DEFAULTSPEED, direction)
 		}
 	}
 }
 
 func runMotor(speed uint, direction bool) {
 	//TODO: Should save last direction for breaking)
+
 	// Invert direction in order to break elevator before stopping
 	if speed == 0 {
 		direction = !direction
