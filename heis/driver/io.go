@@ -28,8 +28,6 @@ const (
 	up lightTYpe = itoa + 1
 	down
 	command
-	stop
-	door
 )
 
 type Light struct {
@@ -176,12 +174,6 @@ func setFloorLight(floor int) {
 func setLight(light Light) {
 	if light.on {
 		switch light.floor {
-		case 0:
-			if light.light == door {
-				io_set_bit(DOOR_OPEN)
-			} else if light.light == stop {
-				io_set_bit(STOP_LIGHT)
-			}
 		case 1:
 			switch light.light {
 			case command:
@@ -217,12 +209,6 @@ func setLight(light Light) {
 		}
 	} else {
 		switch light.floor {
-		case 0:
-			if light.light == door {
-				io_clear_bit(DOOR_OPEN)
-			} else if light.light == stop {
-				io_clear_bit(STOP_LIGHT)
-			}
 		case 1:
 			switch light.light {
 			case command:
