@@ -23,17 +23,19 @@ type Button struct {
 }
 
 type lightType int
+
 const (
-	up lightTYpe = itoa +1
+	up lightTYpe = itoa + 1
 	down
 	command
 	stop
 	door
 )
+
 type Light struct {
 	floor int
 	light lightType
-	on bool
+	on    bool
 }
 
 func init(floorOrder chan uint, floor chan uint) {
@@ -165,31 +167,89 @@ func setFloorLight(floor int) {
 }
 
 func setLight(light Light) {
-// not done yet
-		io_set_bit(LIGHT_COMMAND1)
-		io_set_bit(LIGHT_COMMAND2)
-		io_set_bit(LIGHT_COMMAND3)
-		io_set_bit(LIGHT_COMMAND4)
-		io_set_bit(LIGHT_UP1)
-		io_set_bit(LIGHT_UP2)
-		io_set_bit(LIGHT_DOWN2)
-		io_set_bit(LIGHT_UP3)
-		io_set_bit(LIGHT_DOWN3)
-		io_set_bit(LIGHT_DOWN4)
-		io_set_bit(DOOR_OPEN)
-
-		io_clear_bit(LIGHT_COMMAND1)
-		io_clear_bit(LIGHT_COMMAND2)
-		io_clear_bit(LIGHT_COMMAND3)
-		io_clear_bit(LIGHT_COMMAND4)
-		io_clear_bit(LIGHT_UP1)
-		io_clear_bit(LIGHT_UP2)
-		io_clear_bit(LIGHT_DOWN2)
-		io_clear_bit(LIGHT_UP3)
-		io_clear_bit(LIGHT_DOWN3)
-		io_clear_bit(LIGHT_DOWN4)
-		io_clear_bit(DOOR_OPEN)
-
+	if light.on {
+		switch light.floor {
+		case 0:
+			if light.light == door {
+				io_set_bit(DOOR_OPEN)
+			} else if light.light == stop {
+				io_set_bit(STOP_LIGHT)
+			}
+		case 1:
+			switch light.light {
+			case command:
+				io_set_bit(LIGHT_COMMAND1)
+			case up:
+				io_set_bit(LIGHT_UP1)
+			}
+		case 2:
+			switch light.light {
+			case command:
+				io_set_bit(LIGHT_COMMAND2)
+			case up:
+				io_set_bit(LIGHT_UP2)
+			case down:
+				io_set_bit(LIGHT_DOWN2)
+			}
+		case 3:
+			switch light.light {
+			case command:
+				io_set_bit(LIGHT_COMMAND3)
+			case up:
+				io_set_bit(LIGHT_UP3)
+			case down:
+				io_set_bit(LIGHT_DOWN3)
+			}
+		case 4:
+			switch light.light {
+			case command:
+				io_set_bit(LIGHT_COMMAND4)
+			case down:
+				io_set_bit(LIGHT_DOWN4)
+			}
+		}
+	} else {
+		switch light.floor {
+		case 0:
+			if light.light == door {
+				io_clear_bit(DOOR_OPEN)
+			} else if light.light == stop {
+				io_clear_bit(STOP_LIGHT)
+			}
+		case 1:
+			switch light.light {
+			case command:
+				io_clear_bit(LIGHT_COMMAND1)
+			case up:
+				io_clear_bit(LIGHT_UP1)
+			}
+		case 2:
+			switch light.light {
+			case command:
+				io_clear_bit(LIGHT_COMMAND2)
+			case up:
+				io_clear_bit(LIGHT_UP2)
+			case down:
+				io_clear_bit(LIGHT_DOWN2)
+			}
+		case 3:
+			switch light.light {
+			case command:
+				io_clear_bit(LIGHT_COMMAND3)
+			case up:
+				io_clear_bit(LIGHT_UP3)
+			case down:
+				io_clear_bit(LIGHT_DOWN3)
+			}
+		case 4:
+			switch light.light {
+			case command:
+				io_clear_bit(LIGHT_COMMAND4)
+			case down:
+				io_clear_bit(LIGHT_DOWN4)
+			}
+		}
+	}
 }
 
 func emergencyStop(bool stop) {
