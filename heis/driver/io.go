@@ -88,6 +88,7 @@ func runElevator(floorOrder chan uint, floor chan Status) {
 	floor <- lastFloor
 	runMotor(0, lastFloor.direction)
 
+	// Elevator should be in known state. Starting loop
 	for {
 		select {
 		case newFloorStop := <-floorOrder:
@@ -114,7 +115,9 @@ func runElevator(floorOrder chan uint, floor chan Status) {
 			} else {
 				lastFloor.direction = true
 			}
-			runMotor(DEFAULTSPEED, lastFloor.direction)
+			if !io_read_bit(DOOR_OPEN) {
+				runMotor(DEFAULTSPEED, lastFloor.direction)
+			}
 		}
 	}
 }
@@ -168,6 +171,68 @@ func setFloorLight(floor int) {
 	case 4:
 		io_set_bit(FLOOR_IND1)
 		io_set_bit(FLOOR_IND2)
+	}
+}
+func readButtons(keypress chan Button) {
+
+	floor_command := [4]int{FLOOR_COMMAND1,
+		FLOOR_COMMAND2,
+		FLOOR_COMMAND3,
+		FLOOR_COMMAND4}
+
+	floorUp := [3]int{
+		FLOOR_UP1,
+		FLOOR_UP2,
+		FLOOR_UP3}
+
+	floorDown := [3]int{
+		FLOOR_DOWN2,
+		FLOOR_DOWN3,
+		FLOOR_DOWN4}
+
+	lastPress := create(map[int]bool)
+
+	for {
+		for i := uint; i <= MAXFLOOR; i++ {
+			if io_read_bit(floorCommand[i]) && !lastPress[floorCommand[i]] {
+				lastPress[floorCommand[i]] = true
+				keypress <- Button{i + 1, command}
+			} else if !io_read_bit(floorCommand[i]) && lastPress[floorCommand[i]] {
+				lastPress[floorCommand[i]] = false
+			}
+		}
+
+		for i := uint; i < MAXFLOOR; i++ {
+			if io_read_bit(floorUP[i]) && !lastPress[floorUP[i]] {
+				lastPress[floorUP[i]] = true
+				keypress <- Button{i, up}
+			} else if !io_read_bit(floorUP[i]) && lastPress[floorUP[i]] {
+				lastPress[floorUP[i]] = false
+			}
+		}
+
+		for i := uint; i < MAXFLOOR; i++ {
+			if io_read_bit(floorDown[i]) && !lastPress[floorDown[i]] {
+				lastPress[floorDown[i]] = true
+				keypress <- Button{i + 2, down}
+			} else if !io_read_bit(floorDown[i]) && lastPress[floorDown[i]] {
+				lastPress[floorDown[i]] = false
+			}
+		}
+
+		if io_read_bit(STOP) && !lastPress[STOP] {
+			lastPress[STOP] = true
+			keypress <- Button{0, stop}
+		} else if (!io_read_bit(STOP)) && (lastPress[STOP]) {
+			lastPress[STOP] = false
+		}
+
+		if io_read_bit(OBSTRUCTION) && !lastPress[OBSTRUCTION] {
+			lastPress[OBSTRUCTION] = true
+			keypress <- Button{0, obstruction}
+		} else if !io_read_bit(OBSTRUCTION) && lastPress[OBSTRUCTION] {
+			lastPress[OBSTRUCTION] = false
+		}
 	}
 }
 
