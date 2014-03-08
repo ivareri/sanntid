@@ -1,4 +1,4 @@
-package io
+package liftio
 
 /*
 CFLAGS = -std=c99 -g -Wall -O2 -I . -MMD
