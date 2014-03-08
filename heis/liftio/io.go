@@ -1,4 +1,4 @@
-package io
+package liftio
 
 import (
 	"log"
