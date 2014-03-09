@@ -39,7 +39,7 @@ func deleteLocalRequest(Direction bool, floor uint, localQueue [][]bool){
 }
 
 // Returns next floor ordered from the local queue or 0 if empty
-func getOrder(floorOrder chan uint status chan struct, localQueue [][]bool) int {
+func GetOrder(floorOrder chan uint status chan struct, localQueue [][]bool) int {
 	status := <-status
 	currentFloor := status.floor
 	currentIndex = int(currentFloor-1)
