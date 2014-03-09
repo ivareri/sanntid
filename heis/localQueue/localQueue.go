@@ -46,20 +46,20 @@ func GetOrder(floorOrder chan uint status chan struct, localQueue [][]bool) int 
 	
 	if status.direction {
 		if next := checkUp(currentIndex , 3, localQueue); next && currentIndex !=3 {
-			floorOrder
+			floorOrder <- next
 		}else if next := checkDown(3, 0, localQueue); next{
-			return next
+			floorOrder <- next
 		}else{
-			return checkUp(0, currentIndex, localQueue)
+			floorOrder <- checkUp(0, currentIndex, localQueue)
 			}
 		}
 	}else{
 		if next := checkDown(currentIndex , 0, localQueue); next && currentIndex !=3 {
-			return next
+			floorOrder <- next
 		}else if next := checkUp(0, 3, localQueue); next{
-			return next
+			floorOrder <- next
 		}else{
-			return checkDown(3, currentIndex, localQueue)
+			floorOrder <- checkDown(3, currentIndex, localQueue)
 			}
 		}
 	}
@@ -70,7 +70,7 @@ func checkUp(start int, stop int, lockalQueue [][]bool) int {
 	for i := floor; i <= stop ; i++ {
 		if localQueue[i][Up-1] || localQueue[i][Command-1]{
 			return i+1
-			// TODO: Delete from localqueue and tell queuemanager
+			// TODO: tell queuemanager?
 		}
 	} return 0
 }
@@ -80,7 +80,7 @@ func checkDown(start int, stop int, lockalQueue [][]bool) int {
 	for i := floor; i >= stop; i--{
 		if localQueue[i][Down-1] || localQueue[i][Command-1]{
 			return i+1
-			// TODO: Delete from localqueue and tell queuemanager
+			// TODO: tell queuemanager?
 		}
 	} return 0
 }
