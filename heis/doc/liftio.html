@@ -1,0 +1,436 @@
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import "./liftio/"</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				
+			</div>
+		</div>
+		
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+				<dd><a href="#pkg-constants">Constants</a></dd>
+			
+			
+			
+				
+				<dd><a href="#EmergencyStop">func EmergencyStop(bool stop)</a></dd>
+			
+				
+				<dd><a href="#Init">func Init(floorOrder chan uint, floor chan FloorStatus)</a></dd>
+			
+				
+				<dd><a href="#ReadButtons">func ReadButtons(keypress chan Button)</a></dd>
+			
+				
+				<dd><a href="#SetLight">func SetLight(light Light)</a></dd>
+			
+			
+				
+				<dd><a href="#Button">type Button</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ButtonType">type ButtonType</a></dd>
+				
+				
+			
+				
+				<dd><a href="#FloorStatus">type FloorStatus</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Light">type Light</a></dd>
+				
+				
+			
+				
+				<dd><a href="#LightType">type LightType</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h4>Package files</h4>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="/src/pkg/target/c_interface.go">c_interface.go</a>
+			
+				<a href="/src/pkg/target/channels.go">channels.go</a>
+			
+				<a href="/src/pkg/target/io.go">io.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+			<h2 id="pkg-constants">Constants</h2>
+			
+				<pre>const <span id="DEFAULTSPEED">DEFAULTSPEED</span> = 200</pre>
+				
+			
+				<pre>const <span id="DOOR_OPEN">DOOR_OPEN</span> = (0x300 + 3)</pre>
+				
+			
+				<pre>const <span id="FLOOR_COMMAND1">FLOOR_COMMAND1</span> = (0x300 + 21)</pre>
+				
+			
+				<pre>const <span id="FLOOR_COMMAND2">FLOOR_COMMAND2</span> = (0x300 + 20)</pre>
+				
+			
+				<pre>const <span id="FLOOR_COMMAND3">FLOOR_COMMAND3</span> = (0x300 + 19)</pre>
+				
+			
+				<pre>const <span id="FLOOR_COMMAND4">FLOOR_COMMAND4</span> = (0x300 + 18)</pre>
+				
+			
+				<pre>const <span id="FLOOR_DOWN1">FLOOR_DOWN1</span> = -1</pre>
+				<p>
+non-existing ports (for alignment)
+</p>
+
+			
+				<pre>const <span id="FLOOR_DOWN2">FLOOR_DOWN2</span> = (0x200 + 0)</pre>
+				
+			
+				<pre>const <span id="FLOOR_DOWN3">FLOOR_DOWN3</span> = (0x200 + 2)</pre>
+				
+			
+				<pre>const <span id="FLOOR_DOWN4">FLOOR_DOWN4</span> = (0x200 + 3)</pre>
+				
+			
+				<pre>const <span id="FLOOR_IND1">FLOOR_IND1</span> = (0x300 + 0)</pre>
+				
+			
+				<pre>const <span id="FLOOR_IND2">FLOOR_IND2</span> = (0x300 + 1)</pre>
+				
+			
+				<pre>const <span id="FLOOR_UP1">FLOOR_UP1</span> = (0x300 + 17)</pre>
+				
+			
+				<pre>const <span id="FLOOR_UP2">FLOOR_UP2</span> = (0x300 + 16)</pre>
+				
+			
+				<pre>const <span id="FLOOR_UP3">FLOOR_UP3</span> = (0x200 + 1)</pre>
+				
+			
+				<pre>const <span id="FLOOR_UP4">FLOOR_UP4</span> = -1</pre>
+				
+			
+				<pre>const <span id="LIGHT_COMMAND1">LIGHT_COMMAND1</span> = (0x300 + 13)</pre>
+				
+			
+				<pre>const <span id="LIGHT_COMMAND2">LIGHT_COMMAND2</span> = (0x300 + 12)</pre>
+				
+			
+				<pre>const <span id="LIGHT_COMMAND3">LIGHT_COMMAND3</span> = (0x300 + 11)</pre>
+				
+			
+				<pre>const <span id="LIGHT_COMMAND4">LIGHT_COMMAND4</span> = (0x300 + 10)</pre>
+				
+			
+				<pre>const <span id="LIGHT_DOWN1">LIGHT_DOWN1</span> = -1</pre>
+				
+			
+				<pre>const <span id="LIGHT_DOWN2">LIGHT_DOWN2</span> = (0x300 + 7)</pre>
+				
+			
+				<pre>const <span id="LIGHT_DOWN3">LIGHT_DOWN3</span> = (0x300 + 5)</pre>
+				
+			
+				<pre>const <span id="LIGHT_DOWN4">LIGHT_DOWN4</span> = (0x300 + 4)</pre>
+				
+			
+				<pre>const <span id="LIGHT_STOP">LIGHT_STOP</span> = (0x300 + 14)</pre>
+				
+			
+				<pre>const <span id="LIGHT_UP1">LIGHT_UP1</span> = (0x300 + 9)</pre>
+				
+			
+				<pre>const <span id="LIGHT_UP2">LIGHT_UP2</span> = (0x300 + 8)</pre>
+				
+			
+				<pre>const <span id="LIGHT_UP3">LIGHT_UP3</span> = (0x300 + 6)</pre>
+				
+			
+				<pre>const <span id="LIGHT_UP4">LIGHT_UP4</span> = -1</pre>
+				
+			
+				<pre>const <span id="MAXFLOOR">MAXFLOOR</span> = 4</pre>
+				
+			
+				<pre>const <span id="MOTOR">MOTOR</span> = (0x100 + 0)</pre>
+				
+			
+				<pre>const <span id="MOTORDIR">MOTORDIR</span> = (0x300 + 15)</pre>
+				
+			
+				<pre>const <span id="OBSTRUCTION">OBSTRUCTION</span> = (0x300 + 23)</pre>
+				
+			
+				<pre>const <span id="PORT0">PORT0</span> = 1</pre>
+				<p>
+out port 0
+</p>
+
+			
+				<pre>const <span id="PORT1">PORT1</span> = 2</pre>
+				<p>
+in port 1
+</p>
+
+			
+				<pre>const <span id="PORT2">PORT2</span> = 3</pre>
+				<p>
+out port 2
+</p>
+
+			
+				<pre>const <span id="PORT3">PORT3</span> = 3</pre>
+				<p>
+out port 3
+</p>
+
+			
+				<pre>const <span id="PORT4">PORT4</span> = 3</pre>
+				<p>
+in port 4
+</p>
+
+			
+				<pre>const <span id="SENSOR1">SENSOR1</span> = (0x200 + 4)</pre>
+				
+			
+				<pre>const <span id="SENSOR2">SENSOR2</span> = (0x200 + 5)</pre>
+				
+			
+				<pre>const <span id="SENSOR3">SENSOR3</span> = (0x200 + 6)</pre>
+				
+			
+				<pre>const <span id="SENSOR4">SENSOR4</span> = (0x200 + 7)</pre>
+				
+			
+				<pre>const <span id="STOP">STOP</span> = (0x300 + 22)</pre>
+				
+			
+		
+		
+		
+			
+			
+			<h2 id="EmergencyStop">func <a href="/src/pkg/target/io.go?s=5022:5051#L237">EmergencyStop</a></h2>
+			<pre>func EmergencyStop(bool stop)</pre>
+			<p>
+Currently only sets the stop light.
+Future revisions should implement actual emergency stop procedures
+</p>
+
+			
+		
+			
+			
+			<h2 id="Init">func <a href="/src/pkg/target/io.go?s=811:866#L41">Init</a></h2>
+			<pre>func Init(floorOrder chan <a href="/pkg/builtin/#uint">uint</a>, floor chan <a href="#FloorStatus">FloorStatus</a>)</pre>
+			<p>
+Initilazes elevator, starts runElevator routine, wich in turn starts readFloorSensor routine.
+Do not write or read from floorOrder and floor untill this function returns true
+</p>
+
+			
+		
+			
+			
+			<h2 id="ReadButtons">func <a href="/src/pkg/target/io.go?s=5436:5474#L258">ReadButtons</a></h2>
+			<pre>func ReadButtons(keypress chan <a href="#Button">Button</a>)</pre>
+			<p>
+Run as a goroutine.
+Returns Button struct upon keypress.
+</p>
+
+			
+		
+			
+			
+			<h2 id="SetLight">func <a href="/src/pkg/target/io.go?s=3195:3221#L140">SetLight</a></h2>
+			<pre>func SetLight(light <a href="#Light">Light</a>)</pre>
+			<p>
+Sets order\command lights
+TODO: ugly beast. Should be a cleaner way of doing this
+</p>
+
+			
+		
+		
+			
+			
+			<h2 id="Button">type <a href="/src/pkg/target/io.go?s=273:327#L12">Button</a></h2>
+			<pre>type Button struct {
+    Floor  <a href="/pkg/builtin/#uint">uint</a>
+    Button <a href="#ButtonType">ButtonType</a>
+}</pre>
+			<p>
+Floor should be ignored when Button is  Stop or Obstruction
+Used for passing around keypresses
+</p>
+
+
+			
+
+			
+
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ButtonType">type <a href="/src/pkg/target/io.go?s=80:99#L1">ButtonType</a></h2>
+			<pre>type ButtonType <a href="/pkg/builtin/#int">int</a></pre>
+			
+
+			
+				<pre>const (
+    <span id="Up">Up</span> <a href="#ButtonType">ButtonType</a> = itoa + 1
+    <span id="Down">Down</span>
+    <span id="Command">Command</span>
+    <span id="Stop">Stop</span>
+    <span id="Obstruction">Obstruction</span>
+)</pre>
+				
+			
+
+			
+
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="FloorStatus">type <a href="/src/pkg/target/io.go?s=553:628#L33">FloorStatus</a></h2>
+			<pre>type FloorStatus struct {
+    Running   <a href="/pkg/builtin/#bool">bool</a>
+    Floor     <a href="/pkg/builtin/#uint">uint</a>
+    Direction <a href="/pkg/builtin/#bool">bool</a>
+}</pre>
+			<p>
+Running is false when lift is stationary
+</p>
+
+
+			
+
+			
+
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Light">type <a href="/src/pkg/target/io.go?s=445:507#L26">Light</a></h2>
+			<pre>type Light struct {
+    Floor <a href="/pkg/builtin/#uint">uint</a>
+    Light <a href="#LightType">LightType</a>
+    On    <a href="/pkg/builtin/#bool">bool</a>
+}</pre>
+			<p>
+Used for setting command and order lights
+</p>
+
+
+			
+
+			
+
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="LightType">type <a href="/src/pkg/target/io.go?s=329:347#L17">LightType</a></h2>
+			<pre>type LightType <a href="/pkg/builtin/#int">int</a></pre>
+			
+
+			
+				<pre>const (
+    <span id="Up">Up</span> <a href="#LightType">LightType</a> = itoa + 1
+    <span id="Down">Down</span>
+    <span id="Command">Command</span>
+)</pre>
+				
+			
+
+			
+
+			
+
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
