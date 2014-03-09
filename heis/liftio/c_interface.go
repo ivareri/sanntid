@@ -8,10 +8,7 @@ LDFLAGS = -lpthread -lcomedi -g -lm
 import "C"
 import "log"
 
-/**
-  Initialize libComedi in "Sanntidssalen"
-*/
-
+//  Initialize libComedi in "Sanntidssalen"
 func io_init() bool {
 	n, err := C.io_init()
 	if err != nil {
@@ -20,9 +17,7 @@ func io_init() bool {
 	return bool(n)
 }
 
-/**
-  Sets a digital channel bit.
-*/
+//  Sets a digital channel bit.
 func io_set_bit(channel int) {
 	_, err := C.io_set_bit(C.int(channel))
 	if err != nil {
@@ -30,9 +25,7 @@ func io_set_bit(channel int) {
 	}
 }
 
-/**
-  Clears a digital channel bit.
-*/
+//  Clears a digital channel bit.
 func io_clear_bit(channel int) {
 	_, err := C.io_clear_bit(C.int(channel))
 	if err != nil {
@@ -40,9 +33,7 @@ func io_clear_bit(channel int) {
 	}
 }
 
-/**
-  Writes a value to an analog channel.
-*/
+//  Writes a value to an analog channel.
 func io_write_analog(channel, value int) {
 	_, err := C.io_write_analog(C.int(channel), C.int(value))
 	if err != nil {
@@ -50,9 +41,7 @@ func io_write_analog(channel, value int) {
 	}
 }
 
-/**
-  Reads a bit value from a digital channel.
-*/
+//  Reads a bit value from a digital channel.
 func io_read_bit(channel int) bool {
 	n, err := C.io_read_bit(C.int(channel))
 	if err != nil {
@@ -61,9 +50,7 @@ func io_read_bit(channel int) bool {
 	return bool(n)
 }
 
-/**
-  Reads a bit value from an analog channel.
-*/
+//  Reads a bit value from an analog channel.
 func io_read_analog(channel int) {
 	n, err := C.io_read_analog(C.int(channel))
 	if err != nil {

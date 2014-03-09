@@ -7,42 +7,48 @@ import (
 const MAXFLOOR = 4
 const DEFAULTSPEED = 200
 
-type buttonType int
+type ButtonType int
 
 const (
-	up buttonType = itoa + 1
-	down
-	command
-	stop
-	obstruction
+	Up ButtonType = itoa + 1
+	Down
+	Command
+	Stop
+	Obstruction
 )
 
+// Floor should be ignored when Button is  Stop or Obstruction
+// Used for passing around keypresses
 type Button struct {
-	floor  uint
-	button buttonType
+	Floor  uint
+	Button ButtonType
 }
 
-type lightType int
+type LightType int
 
 const (
-	up lightTYpe = itoa + 1
-	down
-	command
+	Up LightType = itoa + 1
+	Down
+	Command
 )
 
+// Used for setting command and order lights
 type Light struct {
-	floor uint
-	light lightType
-	on    bool
+	Floor uint
+	Light LightType
+	On    bool
 }
 
+// Running is false when lift is stationary
 type FloorStatus struct {
-	running   bool
-	floor     uint
-	direction bool
+	Running   bool
+	Floor     uint
+	Direction bool
 }
 
-func init(floorOrder chan uint, floor chan FloorStatus) {
+// Initilazes elevator, starts runElevator routine, wich in turn starts readFloorSensor routine.
+// Do not write or read from floorOrder and floor untill this function returns true
+func Init(floorOrder chan uint, floor chan FloorStatus) {
 	// Init hardware
 	if !io_init() {
 		log.Fatal("Error during HW init")
@@ -67,6 +73,9 @@ func init(floorOrder chan uint, floor chan FloorStatus) {
 	return true
 }
 
+// Listens on floorOrder, and runs lift to given floor
+// Returns status as it arrives at any floor
+// Called from Init
 func runElevator(floorOrder chan uint, floor chan FloorStatus) {
 	floorSeen := make(chan uint)
 	var currentFloor, floorStop uint = 0
@@ -76,17 +85,17 @@ func runElevator(floorOrder chan uint, floor chan FloorStatus) {
 	go readFloorSensor(floorSeen)
 	// Go to closest floor downwards.
 	// Do this to get a known state
-	runMotor(DEFAULTSPEED, lastFloor.direction)
+	runMotor(DEFAULTSPEED, lastFloor.Direction)
 	for {
 		currentFloor <- floorSeen
 		if currentFloor != 0 {
 			break
 		}
 	}
-	lastFloor.floor = currentFloor
-	lastFloor.running = false
+	lastFloor.Floor = currentFloor
+	lastFloor.Running = false
 	floor <- lastFloor
-	runMotor(0, lastFloor.direction)
+	runMotor(0, lastFloor.Direction)
 
 	// Elevator should be in known state. Starting loop
 	for {
@@ -99,11 +108,11 @@ func runElevator(floorOrder chan uint, floor chan FloorStatus) {
 			}
 		case currentFloor <- floorSeen:
 			if currentFloor == floorStop {
-				runMotor(0, lastFloor.direction)
+				runMotor(0, lastFloor.Direction)
 				floorStop = 0
 			}
 			if currentFloor > 1 && currentFloor < MAXFLOOR {
-				lastFloor.floor = currentFloor
+				lastFloor.Floor = currentFloor
 				floor <- lastFloor
 			}
 		default:
@@ -111,17 +120,18 @@ func runElevator(floorOrder chan uint, floor chan FloorStatus) {
 				break
 			}
 			if floorStop < lastFloor.floor {
-				lastFloor.direction = false
+				lastFloor.Direction = false
 			} else {
-				lastFloor.direction = true
+				lastFloor.Direction = true
 			}
 			if !io_read_bit(DOOR_OPEN) {
-				runMotor(DEFAULTSPEED, lastFloor.direction)
+				runMotor(DEFAULTSPEED, lastFloor.Direction)
 			}
 		}
 	}
 }
 
+// Called from runElevator
 func runMotor(speed uint, direction bool) {
 	// Invert direction in order to break elevator before stopping
 	if speed == 0 {
@@ -135,81 +145,83 @@ func runMotor(speed uint, direction bool) {
 	io_write_analog(MOTOR, 2048+4*speed)
 }
 
-func setLight(light Light) {
-	// TODO: ugly beast. Should be a cleaner way of doing this
-	if light.on {
-		switch light.floor {
+// Sets order\command lights
+// TODO: ugly beast. Should be a cleaner way of doing this
+func SetLight(light Light) {
+	if light.On {
+		switch light.Floor {
 		case 1:
-			switch light.light {
-			case command:
+			switch light.Light {
+			case Command:
 				io_set_bit(LIGHT_COMMAND1)
-			case up:
+			case Up:
 				io_set_bit(LIGHT_UP1)
 			}
 		case 2:
-			switch light.light {
-			case command:
+			switch light.Light {
+			case Command:
 				io_set_bit(LIGHT_COMMAND2)
-			case up:
+			case Up:
 				io_set_bit(LIGHT_UP2)
-			case down:
+			case Down:
 				io_set_bit(LIGHT_DOWN2)
 			}
 		case 3:
-			switch light.light {
-			case command:
+			switch light.Light {
+			case Command:
 				io_set_bit(LIGHT_COMMAND3)
-			case up:
+			case Up:
 				io_set_bit(LIGHT_UP3)
-			case down:
+			case Down:
 				io_set_bit(LIGHT_DOWN3)
 			}
 		case 4:
-			switch light.light {
-			case command:
+			switch light.Light {
+			case Command:
 				io_set_bit(LIGHT_COMMAND4)
-			case down:
+			case Down:
 				io_set_bit(LIGHT_DOWN4)
 			}
 		}
 	} else {
-		switch light.floor {
+		switch light.Floor {
 		case 1:
-			switch light.light {
-			case command:
+			switch light.Light {
+			case Command:
 				io_clear_bit(LIGHT_COMMAND1)
-			case up:
+			case Up:
 				io_clear_bit(LIGHT_UP1)
 			}
 		case 2:
-			switch light.light {
-			case command:
+			switch light.Light {
+			case Command:
 				io_clear_bit(LIGHT_COMMAND2)
-			case up:
+			case Up:
 				io_clear_bit(LIGHT_UP2)
-			case down:
+			case Down:
 				io_clear_bit(LIGHT_DOWN2)
 			}
 		case 3:
-			switch light.light {
-			case command:
+			switch light.Light {
+			case Command:
 				io_clear_bit(LIGHT_COMMAND3)
-			case up:
+			case Up:
 				io_clear_bit(LIGHT_UP3)
-			case down:
+			case Down:
 				io_clear_bit(LIGHT_DOWN3)
 			}
 		case 4:
-			switch light.light {
-			case command:
+			switch light.Light {
+			case Command:
 				io_clear_bit(LIGHT_COMMAND4)
-			case down:
+			case Down:
 				io_clear_bit(LIGHT_DOWN4)
 			}
 		}
 	}
 }
 
+// Called from readFloorSensor
 func setFloorLight(floor int) {
 	if (floor < 1) || (floor > 4) {
 		log.Fatal("Floor out of range: ", floor)
@@ -230,7 +242,9 @@ func setFloorLight(floor int) {
 	}
 }
 
-func emergencyStop(bool stop) {
+// Currently only sets the stop light.
+// Future revisions should implement actual emergency stop procedures
+func EmergencyStop(bool stop) {
 	if stop {
 		io_set_bit(LIGHT_STOP)
 	} else {
@@ -238,6 +252,9 @@ func emergencyStop(bool stop) {
 	}
 }
 
+// Open\close door. Does not automaticly close door
+// Lift will not run while door open
+// TODO: Check obstruction before closing door
 func doorOpen(bool open) {
 	if open {
 		io_set_bit(DOOR_OPEN)
@@ -246,7 +263,9 @@ func doorOpen(bool open) {
 	}
 }
 
-func readButtons(keypress chan Button) {
+// Run as a goroutine.
+// Returns Button struct upon keypress.
+func ReadButtons(keypress chan Button) {
 
 	floor_command := [4]int{
 		FLOOR_COMMAND1,
@@ -270,7 +289,7 @@ func readButtons(keypress chan Button) {
 		for i := uint; i <= MAXFLOOR; i++ {
 			if io_read_bit(floorCommand[i]) && !lastPress[floorCommand[i]] {
 				lastPress[floorCommand[i]] = true
-				keypress <- Button{i + 1, command}
+				keypress <- Button{i + 1, Command}
 			} else if !io_read_bit(floorCommand[i]) && lastPress[floorCommand[i]] {
 				lastPress[floorCommand[i]] = false
 			}
@@ -279,7 +298,7 @@ func readButtons(keypress chan Button) {
 		for i := uint; i < MAXFLOOR; i++ {
 			if io_read_bit(floorUP[i]) && !lastPress[floorUP[i]] {
 				lastPress[floorUP[i]] = true
-				keypress <- Button{i, up}
+				keypress <- Button{i, Up}
 			} else if !io_read_bit(floorUP[i]) && lastPress[floorUP[i]] {
 				lastPress[floorUP[i]] = false
 			}
@@ -288,7 +307,7 @@ func readButtons(keypress chan Button) {
 		for i := uint; i < MAXFLOOR; i++ {
 			if io_read_bit(floorDown[i]) && !lastPress[floorDown[i]] {
 				lastPress[floorDown[i]] = true
-				keypress <- Button{i + 2, down}
+				keypress <- Button{i + 2, Down}
 			} else if !io_read_bit(floorDown[i]) && lastPress[floorDown[i]] {
 				lastPress[floorDown[i]] = false
 			}
@@ -296,20 +315,21 @@ func readButtons(keypress chan Button) {
 
 		if io_read_bit(STOP) && !lastPress[STOP] {
 			lastPress[STOP] = true
-			keypress <- Button{0, stop}
+			keypress <- Button{0, Stop}
 		} else if (!io_read_bit(STOP)) && (lastPress[STOP]) {
 			lastPress[STOP] = false
 		}
 
 		if io_read_bit(OBSTRUCTION) && !lastPress[OBSTRUCTION] {
 			lastPress[OBSTRUCTION] = true
-			keypress <- Button{0, obstruction}
+			keypress <- Button{0, Obstruction}
 		} else if !io_read_bit(OBSTRUCTION) && lastPress[OBSTRUCTION] {
 			lastPress[OBSTRUCTION] = false
 		}
 	}
 }
 
+// Started by runElevator
 func readFloorsensor(floor chan uint) {
 	currenFloor := -1
 	if io_read_bit(SENSOR1) && (currentFloor != 1) {
