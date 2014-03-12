@@ -5,7 +5,7 @@ package liftio
 //LDFLAGS = -lpthread -g -lm
 //#include "dummyio.h"
 import "C"
-//import	"log"
+import	"log"
 
 //  Initialize libComedi in "Sanntidssalen"
 func ioInit() bool {
