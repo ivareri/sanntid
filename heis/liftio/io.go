@@ -10,7 +10,7 @@ const DEFAULTSPEED = 200
 type ButtonType int
 
 const (
-	Up ButtonType = itoa + 1
+	Up ButtonType = iota
 	Down
 	Command
 	Stop
@@ -26,16 +26,12 @@ type Button struct {
 
 type LightType int
 
-const (
-	Up LightType = itoa + 1
-	Down
-	Command
-)
 
 // Used for setting command and order lights
+// TODO: Fix type name
 type Light struct {
 	Floor uint
-	Light LightType
+	Light ButtonType
 	On    bool
 }
 
@@ -50,7 +46,7 @@ type FloorStatus struct {
 // Do not write or read from floorOrder and floor untill this function returns true
 func Init(floorOrder chan uint, floor chan FloorStatus) {
 	// Init hardware
-	if !io_init() {
+	if !ioInit() {
 		log.Fatal("Error during HW init")
 	}
 	// turn off all lights
