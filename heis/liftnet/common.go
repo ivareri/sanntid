@@ -1,5 +1,15 @@
 package liftnet
 
+import (
+	"net"
+	"os"
+	"log"
+	"strconv"
+	"strings"
+	"errors"
+)
+
+//Returns IPv4 address for lift
 func FindIP() (string, error) {
 	name, err := os.Hostname()
 	if err != nil {
@@ -18,6 +28,8 @@ func FindIP() (string, error) {
 	return "", errors.New("Unable to find IPv4 address")
 }
 
+//converts IPv4 address to ID string.
+// 3 last digits from IPv4 address
 func FindID(a string) int {
 	id, err := strconv.Atoi(strings.Split(a, ".")[3])
 	if err != nil {
