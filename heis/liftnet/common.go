@@ -1,5 +1,14 @@
 package liftnet
 
+import (
+	"net"
+	"os"
+	"log"
+	"strconv"
+	"strings"
+	"errors"
+)
+
 func FindIP() (string, error) {
 	name, err := os.Hostname()
 	if err != nil {

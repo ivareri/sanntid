@@ -1,7 +1,7 @@
-package heisnet
+package liftnet
 
 import (
-	"json"
+	"encoding/json"
 	"log"
 	"net"
 )
@@ -9,7 +9,7 @@ import (
 type Orderstatus int
 
 const (
-	New = itoa + 1
+	New Orderstatus = iota
 	Accepted
 	Done
 )
@@ -21,9 +21,9 @@ type Message struct {
 	Status    Orderstatus
 }
 
-const multicastaddr = "239.0.0.148:4900"
+const multicastaddr = "239.0.0.148:49153"
 
-func multicastInit(send, recieved chan Message) {
+func MulticastInit(send chan Message, recieved chan Message) {
 	group, err := net.ResolveUDPAddr("udp", multicastaddr)
 	if err != nil {
 		log.Println("error from ResolveUDPAddr:", err)
@@ -45,7 +45,7 @@ func multicastSend(send chan Message, conn *net.UDPConn, addr *net.UDPAddr) {
 		if err != nil {
 			log.Println("Error encoding message: ", err)
 		} else {
-			_, err := conn.WriteToUDP(buf, add)
+			_, err := conn.WriteToUDP(buf, addr)
 			if err != nil {
 				log.Println("Error sending message", err)
 			}
@@ -54,14 +54,17 @@ func multicastSend(send chan Message, conn *net.UDPConn, addr *net.UDPAddr) {
 }
 func multicastRead(recieved chan Message, conn *net.UDPConn) {
 	for {
-		var buf [512]byte
+		buf :=make([]byte, 512)
 		l, _, err := conn.ReadFrom(buf)
 		if err != nil {
 			log.Println("error from ReadFrom:", err)
 		}
 		var m Message
-		err := json.Unmarshal(buf[:l], &m)
-		recieved <= m
-
+		er := json.Unmarshal(buf[:l], &m)
+		if er != nil {
+			log.Println("Error unpacking", er)
+		} else {
+		//	recieved <= m
+		}
 	}
 }
