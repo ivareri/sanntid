@@ -1,15 +1,14 @@
 package liftio
 
-/*
-CFLAGS = -std=c99 -g -Wall -O2 -I . -MMD
-LDFLAGS = -lpthread -lcomedi -g -lm
-#include "io.h"
-*/
+
+//CFLAGS = -std=c99 -g -Wall -O2 -I . -MMD
+//LDFLAGS = -lpthread -g -lm
+//#include "dummyio.h"
 import "C"
-import "log"
+//import	"log"
 
 //  Initialize libComedi in "Sanntidssalen"
-func io_init() bool {
+func ioInit() bool {
 	n, err := C.io_init()
 	if err != nil {
 		log.Fatal("Error interfacing C driver: ", err)
@@ -18,7 +17,7 @@ func io_init() bool {
 }
 
 //  Sets a digital channel bit.
-func io_set_bit(channel int) {
+func ioSetBit(channel int) {
 	_, err := C.io_set_bit(C.int(channel))
 	if err != nil {
 		log.Fatal("Error interfacing C driver: ", err)

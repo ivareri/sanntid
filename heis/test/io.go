@@ -6,6 +6,6 @@ import (
 func main() {
 	order := make (chan uint)
 	status := make(chan liftio.FloorStatus)
-	Init(order, status)
+	liftio.Init(order, status)
 	return 1
 }
