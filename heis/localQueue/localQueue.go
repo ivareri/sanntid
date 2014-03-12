@@ -3,6 +3,7 @@ package localQueue
 import (
 	"log"
 	"encoding/json"
+	"encoding/gob"
 	"os"
 )
 
@@ -86,7 +87,7 @@ func checkDown(start int, stop int, lockalQueue [][]bool) int {
 }
 
 func writeQueueToFile(localQueue [][]bool, filename string){
-	queue, _ := json.Marshal(localQueue [][]bool)
+	queue := json.Marshal(localQueue [][]bool)
 	file, err := os.Create("localQueue")
 	if err != nil {
 		log.Println(err)
