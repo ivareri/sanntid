@@ -1,23 +1,25 @@
 package liftio
 
 
-//CFLAGS = -std=c99 -g -Wall -O2 -I . -MMD
-//LDFLAGS = -lpthread -g -lm
-//#include "dummyio.h"
+//#cgo CFLAGS:-std=c99 -g -Wall -O2 -I . -MMD
+//#cgo LDFLAGS: -lpthread -lcomedi -g -lm
+//#include <comedilib.h>
+//#include "io.h"
+//#include "channels.h"
 import "C"
 import	"log"
 
 //  Initialize libComedi in "Sanntidssalen"
-func ioInit() bool {
+func io_init() bool {
 	n, err := C.io_init()
 	if err != nil {
 		log.Fatal("Error interfacing C driver: ", err)
 	}
-	return bool(n)
+	return citob(n)
 }
 
 //  Sets a digital channel bit.
-func ioSetBit(channel int) {
+func io_set_bit(channel int) {
 	_, err := C.io_set_bit(C.int(channel))
 	if err != nil {
 		log.Fatal("Error interfacing C driver: ", err)
@@ -46,14 +48,22 @@ func io_read_bit(channel int) bool {
 	if err != nil {
 		log.Fatal("Error interfacing C driver: ", err)
 	}
-	return bool(n)
+	return citob(n)
 }
 
 //  Reads a bit value from an analog channel.
-func io_read_analog(channel int) {
+func io_read_analog(channel int) int{
 	n, err := C.io_read_analog(C.int(channel))
 	if err != nil {
 		log.Fatal("Error interfacing C driver: ", err)
 	}
 	return int(n)
+}
+
+func citob(i C.int) bool {
+	if i == 0 {
+		return false
+	} else {
+		return true
+	}
 }
