@@ -19,5 +19,6 @@ func main () {
 	bla.Direction = false
 	bla.Status = liftnet.New
 	send <- bla
-	<-recieved
+	as := <-recieved
+	fmt.Println(as)
 }
