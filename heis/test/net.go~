@@ -1,9 +1,0 @@
-package main
-
-import (
-	"fmt"
-	"../liftnet/"
-)
-func main () {
-	fmt.Println(liftnet.FindID())
-}

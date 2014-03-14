@@ -10,7 +10,7 @@ const DEFAULTSPEED = 200
 type ButtonType int
 
 const (
-	Up ButtonType = itoa + 1
+	Up ButtonType = iota
 	Down
 	Command
 	Stop
@@ -26,16 +26,12 @@ type Button struct {
 
 type LightType int
 
-const (
-	Up LightType = itoa + 1
-	Down
-	Command
-)
 
 // Used for setting command and order lights
+// TODO: Fix type name
 type Light struct {
 	Floor uint
-	Light LightType
+	Light ButtonType
 	On    bool
 }
 
@@ -48,11 +44,12 @@ type FloorStatus struct {
 
 // Initilazes elevator, starts runElevator routine, wich in turn starts readFloorSensor routine.
 // Do not write or read from floorOrder and floor untill this function returns true
-func Init(floorOrder chan uint, floor chan FloorStatus) {
+func Init(floorOrder *chan uint, floor *chan FloorStatus) bool {
 	// Init hardware
 	if !io_init() {
 		log.Fatal("Error during HW init")
 	}
+	runMotor(0, false)
 	// turn off all lights
 	io_clear_bit(LIGHT_STOP)
 	io_clear_bit(DOOR_OPEN)
@@ -69,57 +66,58 @@ func Init(floorOrder chan uint, floor chan FloorStatus) {
 
 	go runElevator(floorOrder, floor)
 	// wait for eleavtor to arrive at a floor
-	<-floor
+	<-*floor
 	return true
 }
 
 // Listens on floorOrder, and runs lift to given floor
 // Returns status as it arrives at any floor
 // Called from Init
-func runElevator(floorOrder chan uint, floor chan FloorStatus) {
+func runElevator(floorOrder *chan uint, floor *chan FloorStatus) {
 	floorSeen := make(chan uint)
-	var currentFloor, floorStop uint = 0
+	var currentFloor, floorStop uint
 	var lastFloor FloorStatus
-	lastFloor.direction = false
+	lastFloor.Direction = false
 
 	go readFloorSensor(floorSeen)
 	// Go to closest floor downwards.
 	// Do this to get a known state
 	runMotor(DEFAULTSPEED, lastFloor.Direction)
 	for {
-		currentFloor <- floorSeen
+		currentFloor = <-floorSeen
 		if currentFloor != 0 {
+			log.Println("Found floor")
 			break
 		}
 	}
+	runMotor(0, lastFloor.Direction)
 	lastFloor.Floor = currentFloor
 	lastFloor.Running = false
-	floor <- lastFloor
-	runMotor(0, lastFloor.Direction)
+	*floor <-lastFloor
 
 	// Elevator should be in known state. Starting loop
 	for {
 		select {
-		case newFloorStop := <-floorOrder:
+		case newFloorStop := <-*floorOrder:
 			if newFloorStop < 1 || newFloorStop > MAXFLOOR {
 				log.Println("FloorOrder out of range:", newFloorStop)
 			} else {
 				floorStop = newFloorStop
 			}
-		case currentFloor <- floorSeen:
+		case currentFloor = <-floorSeen:
 			if currentFloor == floorStop {
 				runMotor(0, lastFloor.Direction)
 				floorStop = 0
 			}
 			if currentFloor > 1 && currentFloor < MAXFLOOR {
 				lastFloor.Floor = currentFloor
-				floor <- lastFloor
+				*floor <- lastFloor
 			}
 		default:
 			if floorStop == 0 {
 				break
 			}
-			if floorStop < lastFloor.floor {
+			if floorStop < lastFloor.Floor {
 				lastFloor.Direction = false
 			} else {
 				lastFloor.Direction = true
@@ -142,7 +140,7 @@ func runMotor(speed uint, direction bool) {
 	} else {
 		io_clear_bit(MOTORDIR)
 	}
-	io_write_analog(MOTOR, 2048+4*speed)
+	io_write_analog(MOTOR, 2048+4*int(speed))
 }
 
 // Sets order\command lights
@@ -231,11 +229,11 @@ func setFloorLight(floor int) {
 		io_clear_bit(FLOOR_IND1)
 		io_clear_bit(FLOOR_IND2)
 	case 2:
-		io_set_bit(FLOOR_IND1)
-		io_clear_bit(FLOOR_IND2)
-	case 3:
-		io_clear_bit(FLOOR_IND1)
 		io_set_bit(FLOOR_IND2)
+		io_clear_bit(FLOOR_IND1)
+	case 3:
+		io_clear_bit(FLOOR_IND2)
+		io_set_bit(FLOOR_IND1)
 	case 4:
 		io_set_bit(FLOOR_IND1)
 		io_set_bit(FLOOR_IND2)
@@ -244,7 +242,7 @@ func setFloorLight(floor int) {
 
 // Currently only sets the stop light.
 // Future revisions should implement actual emergency stop procedures
-func EmergencyStop(bool stop) {
+func EmergencyStop(stop bool) {
 	if stop {
 		io_set_bit(LIGHT_STOP)
 	} else {
@@ -255,7 +253,7 @@ func EmergencyStop(bool stop) {
 // Open\close door. Does not automaticly close door
 // Lift will not run while door open
 // TODO: Check obstruction before closing door
-func doorOpen(bool open) {
+func doorOpen(open bool) {
 	if open {
 		io_set_bit(DOOR_OPEN)
 	} else {
@@ -267,7 +265,7 @@ func doorOpen(bool open) {
 // Returns Button struct upon keypress.
 func ReadButtons(keypress chan Button) {
 
-	floor_command := [4]int{
+	floorCommand := [4]int{
 		FLOOR_COMMAND1,
 		FLOOR_COMMAND2,
 		FLOOR_COMMAND3,
@@ -283,31 +281,36 @@ func ReadButtons(keypress chan Button) {
 		FLOOR_DOWN3,
 		FLOOR_DOWN4}
 
-	lastPress := create(map[int]bool)
+	lastPress := make(map[int]bool)
 
 	for {
-		for i := uint; i <= MAXFLOOR; i++ {
+		for i := uint(0); i < MAXFLOOR; i++ {
 			if io_read_bit(floorCommand[i]) && !lastPress[floorCommand[i]] {
 				lastPress[floorCommand[i]] = true
+				log.Println("Keypress")
 				keypress <- Button{i + 1, Command}
 			} else if !io_read_bit(floorCommand[i]) && lastPress[floorCommand[i]] {
 				lastPress[floorCommand[i]] = false
 			}
 		}
 
-		for i := uint; i < MAXFLOOR; i++ {
-			if io_read_bit(floorUP[i]) && !lastPress[floorUP[i]] {
-				lastPress[floorUP[i]] = true
+		for i := uint(0); i < MAXFLOOR-1; i++ {
+			if io_read_bit(floorUp[i]) && !lastPress[floorUp[i]] {
+				lastPress[floorUp[i]] = true
 				keypress <- Button{i, Up}
-			} else if !io_read_bit(floorUP[i]) && lastPress[floorUP[i]] {
-				lastPress[floorUP[i]] = false
+				log.Println("Keypress")
+				keypress <- Button{i + 1, Command}
+			} else if !io_read_bit(floorUp[i]) && lastPress[floorUp[i]] {
+				lastPress[floorUp[i]] = false
 			}
 		}
 
-		for i := uint; i < MAXFLOOR; i++ {
+		for i := uint(0); i < MAXFLOOR-1; i++ {
 			if io_read_bit(floorDown[i]) && !lastPress[floorDown[i]] {
 				lastPress[floorDown[i]] = true
 				keypress <- Button{i + 2, Down}
+				log.Println("Keypress")
+				keypress <- Button{i + 1, Command}
 			} else if !io_read_bit(floorDown[i]) && lastPress[floorDown[i]] {
 				lastPress[floorDown[i]] = false
 			}
@@ -330,21 +333,41 @@ func ReadButtons(keypress chan Button) {
 }
 
 // Started by runElevator
-func readFloorsensor(floor chan uint) {
-	currenFloor := -1
-	if io_read_bit(SENSOR1) && (currentFloor != 1) {
-		setFloorLight(1)
-		floor <- 1
-	} else if io_read_bit(SENSOR2) && (currentFloor != 2) {
-		setFloorLight(2)
-		floor <- 2
-	} else if io_read_bit(SENSOR3) && (currentFloor != 3) {
-		setFloorLight(3)
-		floor <- 3
-	} else if io_read_bit(SENSOR4) && (currentFloor != 4) {
-		setFloorLight(4)
-		floor <- 4
-	} else if currentFloor != 0 {
-		floor <- 0
+func readFloorSensor(floor chan uint) {
+	currentFloor := -1
+	for {
+		if io_read_bit(SENSOR1) {
+			if currentFloor != 1 {
+				setFloorLight(1)
+				currentFloor = 1
+				log.Println("Floor 1", currentFloor)
+				floor <- 1
+			}
+		} else if io_read_bit(SENSOR2) {
+			if currentFloor != 2 {
+				setFloorLight(2)
+				currentFloor = 2
+				floor <- 2
+				log.Println("Floor 2")
+			}
+		} else if io_read_bit(SENSOR3) {
+			if currentFloor != 3 {
+				setFloorLight(3)
+				currentFloor = 3
+				log.Println("Floor 3")
+				floor <- 3
+			}
+		} else if io_read_bit(SENSOR4) {
+			if (currentFloor != 4) {
+				setFloorLight(4)
+				currentFloor = 4
+				log.Println("Floor 4")
+				floor <- 4
+			}
+		} else if currentFloor != 0 {
+			currentFloor = 0
+			floor <- 0
+			log.Println("Floor 0")
+		}
 	}
 }
