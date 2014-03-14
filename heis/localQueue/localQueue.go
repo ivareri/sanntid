@@ -7,43 +7,47 @@ import (
 )
 
 
-// Writes localQueue to file for backup
-func writeQueueToFile(localQueue [][]bool, filename string) {
-	queue := json.Marshal(localQueue)
-	file, err := os.Create(filename)  // use os.openfile() instead? Create in elevator?
+// Writes localQueue.commandQueue to file for backup (hopefully)
+func writeQueueToFile(localQueue Queue) {
+	cmdQueue, err := json.Marshal(localQueue.commandQueue)
+	if err != nil{
+		log.Println(err)
+	}
+	file, err := os.Create("localQueue.txt")  
 	if err != nil {
 		log.Println("Error in opening file ", err)
 	}
-	n, err := file.Write(queue) // overwriting or just appending
+	n, err := file.Write(cmdQueue) // overwrites existing file 
 	if err != nil {
 		log.Println("Error in writing to file ", err)
 	}
+	log.Println("wrote %d bytes\n to localQueue.txt", n)
 	defer file.Close()
 }
 
 // Adds floor to local Queue and writes to file
-func addLocalCommand(buttonPressed button, localQueue [][]bool) {
+func AddLocalCommand(buttonPressed button, localQueue [][]bool) {
 	SetLight(Light{buttonPressed.Floor, Command, true})
 	localQueue[floor-1][Command] = true
 	writeQueueToFile(localQueue, "localQueue")
 }
 
 // Deletes floor from local Queue and writes to file
-func deleteLocalCommand(floor uint, localQueue [][]bool) {
+func DeleteLocalCommand(floor uint, localQueue [][]bool) {
 	SetLight(Light{floor, Command, false})
 	localQueue[floor-1][Command] = false
 	writeQueueToFile(localQueue, "localQueue")
 }
 
 // Adds request to localQueue and writes to file
-func addLocalRequest(manager chan button, localQueue [][]bool) {
+func AddLocalRequest(manager chan button, localQueue [][]bool) {
 	buttonPressed := <-manager
 	SetLight(Light{buttonPressed.Floor, buttonPressed.Button, true})
 	localQueue[buttonPressed.Floor-1][buttonPressed.Button-1] = true
 }
 
 // Deletes requests from localQueue and writes to file
-func deleteLocalRequest(Direction bool, floor uint, localQueue [][]bool) {
+func DeleteLocalRequest(Direction bool, floor uint, localQueue [][]bool) {
 	if Direction {
 		SetLights(Light{floor, Up, false})
 		localQueue[floor-1][Up-1] = false
