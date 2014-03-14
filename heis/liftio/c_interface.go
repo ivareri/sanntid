@@ -1,13 +1,12 @@
 package liftio
 
-
 //#cgo CFLAGS:-std=c99 -g -Wall -O2 -I . -MMD
 //#cgo LDFLAGS: -lpthread -lcomedi -g -lm
 //#include <comedilib.h>
 //#include "io.h"
 //#include "channels.h"
 import "C"
-import	"log"
+import "log"
 
 //  Initialize libComedi in "Sanntidssalen"
 func io_init() bool {
@@ -52,7 +51,7 @@ func io_read_bit(channel int) bool {
 }
 
 //  Reads a bit value from an analog channel.
-func io_read_analog(channel int) int{
+func io_read_analog(channel int) int {
 	n, err := C.io_read_analog(C.int(channel))
 	if err != nil {
 		log.Fatal("Error interfacing C driver: ", err)
