@@ -4,8 +4,15 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"../liftio"
 )
 
+// change names to avoid confusion with buttons?
+type Queue struct {
+    Up      [4]bool
+    Down    [4]bool
+    Command [4]bool
+}
 
 // Writes localQueue.command to file for backup
 func writeQueueToFile(localQueue Queue) {
@@ -38,13 +45,13 @@ func ReadQueueFromFile(localQueue Queue){
 	}
 	defer input.Close()
 	log.Println("Read %d bytes: %s from file\n", dat, string(byt))
-	if err :=json.Unmarshal(d, &localQueue.commandQueue); err != nil {
+	if err :=json.Unmarshal(byt, &localQueue.Command); err != nil {
 		log.Println(err)
 	}
 }
 
 // Adds floor to local Queue and writes to file
-func AddLocalCommand(buttonPressed button, localQueue Queue) {
+func AddLocalCommand(buttonPressed liftio.Button, localQueue Queue) {
 	SetLight(Light{buttonPressed.Floor, Command, true})
 	localQueue.Command[buttonPressed.Floor-1] = true
 	writeQueueToFile(localQueue, "localQueue")
@@ -66,7 +73,6 @@ func AddLocalRequest(manager chan button, localQueue Queue) {
 	} else {
 		localQueue.Down[buttonPressed.Floor] = true
 	}
-	
 }
 
 // Deletes requests from localQueue and writes to file
