@@ -70,25 +70,26 @@ func assignLift(toNetwork ){
 	
 }
 
-// Lift with largest FS should accept the request 
+// Returns int fs
+// Lift with largest fs should accept the request 
 func figureOfSuitability(request Message, status FloorStatus) int {
 	reqDir := request.Direction
 	reqFlr := request.Floor
 	statDir := status.Direction
 	statFlr := status.Floor
 	if reqDir == statDir && reqFlr > statFlr { // if lift moving towards req flr and req in same dir: N+1-d
-		FS := MAXFLOOR + 1 - diff(reqFlr,statFlr)
+		fs := MAXFLOOR + 1 - diff(reqFlr,statFlr)
 	} else if {
 		
 	} 
 	
 	
 	else if  !reqDir && statDir && requFlr < statFlr {
-		FS := MAXFLOOR + 1 - diff(reqFlr,statFlr)
+		fs := MAXFLOOR + 1 - diff(reqFlr,statFlr)
 	} else {
-		FS := 1
+		fs := 1
 	}
-	return FS
+	return fs
 }
 
 // timer thingy
