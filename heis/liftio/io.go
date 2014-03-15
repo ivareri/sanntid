@@ -47,17 +47,18 @@ type motorType struct {
 
 var (
 	floorSeen = make(chan uint, 5)
-	motor = make(chan motorType, 5)
+	motor     = make(chan motorType, 5)
 )
 
-// Initilazes elevator, starts runElevator routine, wich in turn starts readFloorSensor routine.
-// Do not write or read from floorOrder and floor untill this function returns true
+// Initilazes hardware and starts IO routines
+// Do not write or read to any channels untill this function returns true
 func Init(floorOrder *chan uint, light *chan Light, floor *chan FloorStatus, button *chan Button) bool {
 	// Init hardware
 	if !io_init() {
 		log.Fatal("Error during HW init")
 	}
-	// turn off all lights
+	// Stop motor and turn off all lights
+	io_write_analog(MOTOR, 0)
 	io_clear_bit(LIGHT_STOP)
 	io_clear_bit(DOOR_OPEN)
 	io_clear_bit(LIGHT_COMMAND1)
@@ -72,19 +73,19 @@ func Init(floorOrder *chan uint, light *chan Light, floor *chan FloorStatus, but
 	io_clear_bit(LIGHT_DOWN4)
 	go runIO(button, light)
 	go runElevator(floorOrder, floor)
+	<-*floor
 	return true
 }
 
+// Threads writing\reading from IO might cause bugs
 func runIO(button *chan Button, light *chan Light) {
-	log.Println("entering for loop")
 	for {
 		readFloorSensor()
 		runMotor()
 		readButtons(*button)
 		setLight(*light)
-		time.Sleep(5*time.Millisecond)
+		time.Sleep(5 * time.Millisecond)
 	}
-	log.Println("Exited for loop")
 }
 
 // Listens on floorOrder, and runs lift to given floor
@@ -97,17 +98,17 @@ func runElevator(floorOrder *chan uint, floor *chan FloorStatus) {
 
 	// Go to closest floor downwards.
 	// Do this to get a known state
-		motor<-motorType{DEFAULTSPEED, lastFloor.Direction}
-	  for {
-			currentFloor = <-floorSeen
-			if currentFloor != 0 {
-				log.Println("Found floor")
-				break
-			}
+	motor <- motorType{DEFAULTSPEED, lastFloor.Direction}
+	for {
+		currentFloor = <-floorSeen
+		if currentFloor != 0 {
+			log.Println("Found floor")
+			break
 		}
-		motor<-motorType{0, lastFloor.Direction}
-		lastFloor.Floor = currentFloor
-		lastFloor.Running = false
+	}
+	motor <- motorType{0, lastFloor.Direction}
+	lastFloor.Floor = currentFloor
+	lastFloor.Running = false
 	*floor <- lastFloor
 
 	// Elevator should be in known state. Starting loop
@@ -123,12 +124,6 @@ func runElevator(floorOrder *chan uint, floor *chan FloorStatus) {
 			if currentFloor == 0 {
 				break
 			}
-			if currentFloor == 1 || currentFloor == MAXFLOOR {
-				motor <- motorType{DEFAULTSPEED, lastFloor.Direction}
-				lastFloor.Floor = currentFloor
-				lastFloor.Running = false
-				*floor <- lastFloor
-			}
 			if currentFloor == floorStop {
 				motor <- motorType{0, lastFloor.Direction}
 				lastFloor.Floor = currentFloor
@@ -141,6 +136,12 @@ func runElevator(floorOrder *chan uint, floor *chan FloorStatus) {
 				lastFloor.Floor = currentFloor
 				*floor <- lastFloor
 			}
+			if currentFloor == 1 || currentFloor == MAXFLOOR {
+				motor <- motorType{0, lastFloor.Direction}
+				lastFloor.Floor = currentFloor
+				lastFloor.Running = false
+				*floor <- lastFloor
+			}
 		default:
 			if floorStop == 0 {
 				break
@@ -150,7 +151,7 @@ func runElevator(floorOrder *chan uint, floor *chan FloorStatus) {
 			} else {
 				lastFloor.Direction = false
 			}
-			if doorOpen && !lastFloor.Running {
+			if !doorOpen && !lastFloor.Running {
 				motor <- motorType{DEFAULTSPEED, lastFloor.Direction}
 				lastFloor.Floor = currentFloor
 				lastFloor.Running = true
