@@ -15,6 +15,10 @@ type Queue struct {
 	Command [4]bool
 }
 
+// Initialize lift
+// Send orders to liftio
+// Asign lifts to requests
+// Add/delete orders/requests to/from localQueue
 func elevatorControl(){
 	localQueue := Queue{}
 	ReadQueueFromFile(localQueue) 			// If no previous queue:
@@ -27,11 +31,11 @@ func elevatorControl(){
 	toNetwork := make(chan Message)				// channeling messages to the network
 	fromNetwork := make(chan Message)	  		// channeling messages to the network
 
-	init(floorOrder, status)
-	MultiCastInit(toNetwork, fromNetwork)			
+	init(&floorOrder, &status)
+	MultiCastInit(&toNetwork, &fromNetwork)			
 
-	go ReadButtons(buttonPress) 		
-	go GetOrder(floorOrder)
+	go ReadButtons(&buttonPress) 		
+	go GetOrder(&floorOrder)
 	
 	for{
 		select{
@@ -39,6 +43,7 @@ func elevatorControl(){
 			if buttonPressed.button == Up || buttonPressed.button == Down {
 				log.Println("Request button %v pressed.", buttonPressed.button)
 				// to network or take self
+				// tell net anyhow
 			} else if buttonPressed.button == Command {
 				log.Println("Command button %v pressed.", buttonPressed.Floor)
 				addLockalCommand(buttonPressed, localQueue)
@@ -71,10 +76,15 @@ func figureOfSuitability(request Message, status FloorStatus) int {
 	reqFlr := request.Floor
 	statDir := status.Direction
 	statFlr := status.Floor
-	if reqDir==Up && statDir==up && reqFlr > statFlr {
+	if reqDir == statDir && reqFlr > statFlr { // if lift moving towards req flr and req in same dir: N+1-d
 		FS := MAXFLOOR + 1 - diff(reqFlr,statFlr)
-	} else if  reqDir==Down && statDir==up && requFlr < statFlr {
-		FS := MAXFLOOR - diff(reqFlr,statFlr)
+	} else if {
+		
+	} 
+	
+	
+	else if  !reqDir && statDir && requFlr < statFlr {
+		FS := MAXFLOOR + 1 - diff(reqFlr,statFlr)
 	} else {
 		FS := 1
 	}
