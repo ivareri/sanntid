@@ -70,24 +70,25 @@ func assignLift(toNetwork ){
 	
 }
 
-// Returns int fs
-// Lift with largest fs should accept the request 
+// Nearest Car algorithm, returns Figure of Suitability 
+// Lift with largest FS should accept the request 
 func figureOfSuitability(request Message, status FloorStatus) int {
 	reqDir := request.Direction
 	reqFlr := request.Floor
 	statDir := status.Direction
 	statFlr := status.Floor
-	if reqDir == statDir && reqFlr > statFlr { // if lift moving towards req flr and req in same dir: N+1-d
-		fs := MAXFLOOR + 1 - diff(reqFlr,statFlr)
-	} else if {
-		
-	} 
-	
-	
-	else if  !reqDir && statDir && requFlr < statFlr {
-		fs := MAXFLOOR + 1 - diff(reqFlr,statFlr)
+	if reqDir == statDir { 
+		// lift moving towards the requested floor and the request is in the same direction
+		if (statDir && reqFlr > statFlr) || (!statDir && reqFlr < statFlr){ 
+			fs := MAXFLOOR + 1 - diff(reqFlr,statFlr)
+		}	
 	} else {
-		fs := 1
+		// lift moving towards the requested floor, but the request is in oposite direction
+		if (statDir && reqFlr > statFlr) || (!statDir && reqFlr < statFlr){ 
+			fs := MAXFLOOR - diff(reqFlr,statFlr)
+		} else {
+			fs := 1
+		}
 	}
 	return fs
 }
