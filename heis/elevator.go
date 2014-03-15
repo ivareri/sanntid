@@ -17,18 +17,19 @@ func elevatorControl() {
 	ReadlocalQueue.QueueFromFile(locallocalQueue.Queue) // If no previous queue:
 	// logs error: "queue.txt doesn't exitst"
 
-	floorOrder := make(chan uint)    // channeling floor orders to io
-	buttonPress := make(chan Button) // channeling button presses from io
-	status := make(chan FloorStatus) // channeling the lifts status
+	floorOrder := make(chan uint)    	// channeling floor orders to io
+	buttonPress := make(chan Button) 	// channeling button presses from io
+	status := make(chan FloorStatus) 	// channeling the lifts status
 	// Rename to LiftStatus?
-	toNetwork := make(chan Message)   // channeling messages to the network
-	fromNetwork := make(chan Message) // channeling messages to the network
+	toNetwork := make(chan Message)   	// channeling messages to the network
+	fromNetwork := make(chan Message) 	// channeling messages to the network
+	light := make(chan Light)			
 
 	init(&floorOrder, &status)
 	MultiCastInit(&toNetwork, &fromNetwork)
 
 	go ReadButtons(&buttonPress)
-	go GetOrder(&floorOrder)
+	//go GetOrder(floorOrder)?
 
 	for {
 		select {
@@ -37,19 +38,29 @@ func elevatorControl() {
 				log.Println("Request button %v pressed.", buttonPressed.button)
 				// to network or take self
 				// tell net anyhow
+				// if taken self: call GetOrder
 			} else if buttonPressed.button == Command {
 				log.Println("Command button %v pressed.", buttonPressed.Floor)
 				addLockalCommand(buttonPressed, locallocalQueue.Queue)
+				// call GetOrder
 			} else if buttonPressed.button == Stop {
 				log.Println("Stop button pressed")
-				EmergencyStop(true)
-				// do or check something
+				// optional
 			} else if buttonPressed.button == Obstuction {
-				//does this even belong here ?
+				log.Println("Obstruction")
+				// optional
 			}
-		case request := <-fromNet:
-			FS := figureOfSuitability(request)
-
+		case message := <-fromNet: 
+			if message.Status == liftnet.Done {
+				if message.Direction{
+					light <- Light{message.Floor, Up , false}
+				}else{
+					light <- Light{message.Floor, Down , false}
+				}
+				
+			}
+			
+			
 		default:
 			log.Println("No buttons pressed.")
 			// teit å skrive  ut hele tiden?
