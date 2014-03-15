@@ -1,23 +1,31 @@
 package main
 
 import (
-	"fmt"
 	"../liftnet/"
+	"fmt"
+	"log"
+	"time"
 )
-func main () {
-	a, err := liftnet.FindIP()
+
+func main() {
+	a, iface, err := liftnet.FindIP()
 	if err != nil {
 		fmt.Println("Error", err)
 	}
 	fmt.Println(liftnet.FindID(a))
 	send := make(chan liftnet.Message)
 	recieved := make(chan liftnet.Message)
-	liftnet.MulticastInit(send, recieved)
+	go liftnet.MulticastInit(send, recieved, iface)
+	time.Sleep(20 * time.Millisecond)
+	log.Println(iface.MulticastAddrs())
+
 	var bla liftnet.Message
 	bla.Id = 1
 	bla.Floor = 2
 	bla.Direction = false
 	bla.Status = liftnet.New
+	bla.TimeSent = time.Now()
+	bla.TimeRecv = time.Now()
 	send <- bla
 	as := <-recieved
 	fmt.Println(as)

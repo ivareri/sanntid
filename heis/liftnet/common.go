@@ -1,37 +1,37 @@
 package liftnet
 
 import (
-	"net"
-	"os"
+	"errors"
 	"log"
+	"net"
 	"strconv"
 	"strings"
-	"errors"
 )
 
-//Returns IPv4 address for lift
-func FindIP() (string, error) {
-	name, err := os.Hostname()
-	if err != nil {
-		return "", err
-	}
+var quit = make(chan bool)
 
-	addrs, err := net.LookupHost(name)
+//Returns IPv4 address for lift
+func FindIP() (string, *net.Interface, error) {
+	ifaces, err := net.Interfaces()
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
-	for _, a := range addrs {
-		if strings.Contains(a, ".") {
-			return a, nil
+	for _, iface := range ifaces {
+		addrs, _ := iface.Addrs()
+		for _, a := range addrs {
+			if strings.Contains(a.String(), "129.") {
+				return a.String(), &iface, nil
+			}
 		}
 	}
-	return "", errors.New("Unable to find IPv4 address")
+	return "", nil, errors.New("Unable to find IPv4 address")
 }
 
 //converts IPv4 address to ID string.
 // 3 last digits from IPv4 address
 func FindID(a string) int {
-	id, err := strconv.Atoi(strings.Split(a, ".")[3])
+	log.Println(a)
+	id, err := strconv.Atoi(strings.Split(a, ".")[3][:3])
 	if err != nil {
 		log.Fatal("Error converting IP to ID", err)
 	}
