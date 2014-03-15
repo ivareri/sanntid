@@ -1,17 +1,17 @@
 package elevatorControl
 
 import (
-	"liftio"
-	"localQueue"
-	"time"
+	"./liftio"
+	"./localQueue"
 	"log"
 	"os"
+	"time"
 )
 
 // change names to avoid confusion with buttons?
 type Queue struct {
-	Up [4]bool
-	Down [4]bool
+	Up      [4]bool
+	Down    [4]bool
 	Command [4]bool
 }
 
@@ -19,26 +19,26 @@ type Queue struct {
 // Send orders to liftio
 // Asign lifts to requests
 // Add/delete orders/requests to/from localQueue
-func elevatorControl(){
+func elevatorControl() {
 	localQueue := Queue{}
-	ReadQueueFromFile(localQueue) 			// If no previous queue:
-											// logs error: "queue.txt doesn't exitst" 
-		
-	floorOrder := make(chan uint) 			// channeling floor orders to io 
-	buttonPress := make(chan Button)		// channeling button presses from io
-	status := make(chan FloorStatus)		// channeling the lifts status
+	ReadQueueFromFile(localQueue) // If no previous queue:
+	// logs error: "queue.txt doesn't exitst"
+
+	floorOrder := make(chan uint)    // channeling floor orders to io
+	buttonPress := make(chan Button) // channeling button presses from io
+	status := make(chan FloorStatus) // channeling the lifts status
 	// Rename to LiftStatus?
-	toNetwork := make(chan Message)				// channeling messages to the network
-	fromNetwork := make(chan Message)	  		// channeling messages to the network
+	toNetwork := make(chan Message)   // channeling messages to the network
+	fromNetwork := make(chan Message) // channeling messages to the network
 
 	init(&floorOrder, &status)
-	MultiCastInit(&toNetwork, &fromNetwork)			
+	MultiCastInit(&toNetwork, &fromNetwork)
 
-	go ReadButtons(&buttonPress) 		
+	go ReadButtons(&buttonPress)
 	go GetOrder(&floorOrder)
-	
-	for{
-		select{
+
+	for {
+		select {
 		case buttonPressed := <-buttonPress:
 			if buttonPressed.button == Up || buttonPressed.button == Down {
 				log.Println("Request button %v pressed.", buttonPressed.button)
@@ -55,37 +55,37 @@ func elevatorControl(){
 				//does this even belong here ?
 			}
 		case request := <-fromNet:
-			FS := figureOfSuitability(request,)
-			
+			FS := figureOfSuitability(request)
+
 		default:
 			log.Println("No buttons pressed.")
-			// teit å skrive  ut hele tiden?	
+			// teit å skrive  ut hele tiden?
 		}
 	}
-	
+
 }
 
-func assignLift(toNetwork ){
+func assignLift(toNetwork) {
 	toNetwork <- jhk
-	
+
 }
 
-// Nearest Car algorithm, returns Figure of Suitability 
-// Lift with largest FS should accept the request 
+// Nearest Car algorithm, returns Figure of Suitability
+// Lift with largest FS should accept the request
 func figureOfSuitability(request Message, status FloorStatus) int {
 	reqDir := request.Direction
 	reqFlr := request.Floor
 	statDir := status.Direction
 	statFlr := status.Floor
-	if reqDir == statDir { 
+	if reqDir == statDir {
 		// lift moving towards the requested floor and the request is in the same direction
-		if (statDir && reqFlr > statFlr) || (!statDir && reqFlr < statFlr){ 
-			fs := MAXFLOOR + 1 - diff(reqFlr,statFlr)
-		}	
+		if (statDir && reqFlr > statFlr) || (!statDir && reqFlr < statFlr) {
+			fs := MAXFLOOR + 1 - diff(reqFlr, statFlr)
+		}
 	} else {
 		// lift moving towards the requested floor, but the request is in oposite direction
-		if (statDir && reqFlr > statFlr) || (!statDir && reqFlr < statFlr){ 
-			fs := MAXFLOOR - diff(reqFlr,statFlr)
+		if (statDir && reqFlr > statFlr) || (!statDir && reqFlr < statFlr) {
+			fs := MAXFLOOR - diff(reqFlr, statFlr)
 		} else {
 			fs := 1
 		}
@@ -96,7 +96,5 @@ func figureOfSuitability(request Message, status FloorStatus) int {
 // timer thingy
 // now := time.Now()
 // diff := now.sub(then)
-// sum := then.add(diff) 
+// sum := then.add(diff)
 // diff.Hours() osv -> Nanoseconds
-
-
