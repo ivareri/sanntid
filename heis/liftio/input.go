@@ -1,10 +1,6 @@
 package liftio
 
-import (
-	"log"
-)
-
-var lastPress [12]bool
+var lastPress [14]bool
 var currentFloor = -1
 
 // Called from RunIO.
@@ -17,6 +13,8 @@ func readButtons(keypress chan Button) {
 		FLOOR_UP1,
 		FLOOR_UP2,
 		FLOOR_UP3,
+		FLOOR_UP4,
+		FLOOR_DOWN1,
 		FLOOR_DOWN2,
 		FLOOR_DOWN3,
 		FLOOR_DOWN4,
@@ -31,6 +29,8 @@ func readButtons(keypress chan Button) {
 		Up,
 		Up,
 		Up,
+		Up,
+		Down,
 		Down,
 		Down,
 		Down,
@@ -39,8 +39,7 @@ func readButtons(keypress chan Button) {
 
 	for index, key := range buttons {
 		if readbutton(key, index) {
-			log.Println("Keypress", key)
-			keypress <- Button{uint(index + 1), keyType[index]}
+			keypress <- Button{uint(index%4 + 1), keyType[index]}
 		}
 	}
 }
@@ -89,6 +88,6 @@ func floorsensor(sensor int) {
 			setFloorLight(sensor)
 		}
 		currentFloor = sensor
-		floorSeen <-uint(sensor)
+		floorSeen <- uint(sensor)
 	}
 }

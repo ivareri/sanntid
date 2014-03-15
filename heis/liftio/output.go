@@ -1,8 +1,8 @@
 package liftio
 
 import (
-	"time"
 	"log"
+	"time"
 )
 
 var doorOpen bool
@@ -31,8 +31,9 @@ func runMotor() {
 // TODO: ugly beast. Should be a cleaner way of doing this
 func setLight(lightch chan Light) {
 	select {
-	case light:= <-lightch:
-
+	default:
+		return
+	case light := <-lightch:
 		if light.On {
 			switch light.Floor {
 			case 1:
