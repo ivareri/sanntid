@@ -8,20 +8,13 @@ import (
 	"time"
 )
 
-// change names to avoid confusion with buttons?
-type Queue struct {
-	Up      [4]bool
-	Down    [4]bool
-	Command [4]bool
-}
-
 // Initialize lift
 // Send orders to liftio
 // Asign lifts to requests
-// Add/delete orders/requests to/from localQueue
+// Add/delete orders/requests to/from locallocalQueue.Queue
 func elevatorControl() {
-	localQueue := Queue{}
-	ReadQueueFromFile(localQueue) // If no previous queue:
+	locallocalQueue.Queue := localQueue.Queue{}
+	ReadlocalQueue.QueueFromFile(locallocalQueue.Queue) // If no previous queue:
 	// logs error: "queue.txt doesn't exitst"
 
 	floorOrder := make(chan uint)    // channeling floor orders to io
@@ -46,7 +39,7 @@ func elevatorControl() {
 				// tell net anyhow
 			} else if buttonPressed.button == Command {
 				log.Println("Command button %v pressed.", buttonPressed.Floor)
-				addLockalCommand(buttonPressed, localQueue)
+				addLockalCommand(buttonPressed, locallocalQueue.Queue)
 			} else if buttonPressed.button == Stop {
 				log.Println("Stop button pressed")
 				EmergencyStop(true)
