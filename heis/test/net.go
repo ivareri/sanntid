@@ -29,6 +29,7 @@ func main() {
 	send <- bla
 	for {
 		as := <-recieved
-		fmt.Println(as)
+		fmt.Println("Id: " + string(as.Id) + " Floor: " + string(as.Floor) + "Status: " + string(as.Status))
+
 	}
 }
