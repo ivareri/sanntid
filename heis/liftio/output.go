@@ -20,7 +20,7 @@ func runMotor() {
 		} else {
 			io_clear_bit(MOTORDIR)
 		}
-		time.Sleep(1 * time.Millisecond)
+		time.Sleep(8 * time.Millisecond)
 		io_write_analog(MOTOR, 2048+4*int(bla.speed))
 	default:
 		return

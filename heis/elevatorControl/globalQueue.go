@@ -1,8 +1,8 @@
 package elevatorControl
 
 import (
-	"./liftnet"
-	"./localQueue"
+	"../liftnet"
+	"../localQueue"
 	"log"
 	"time"
 )
@@ -10,23 +10,24 @@ import (
 const acceptedTimeout = 400
 const newTimeout = 40
 
-var globalQueue = make(map[int]liftnet.Message)
-var timeoutch = make(chan int, 100)
+var globalQueue = make(map[uint]liftnet.Message)
+// TODO: Find appropriate channel size
+var timeoutch = make(chan uint, 100)
 
-func generateKey(floor int, direction bool) int {
+func generateKey(floor uint, direction bool) uint {
 	if direction {
 		floor += 10
 	}
 	return floor
 }
 
-func timeout(key int, duration time.Duration) {
+func timeout(key uint, duration time.Duration) {
 	timer := time.NewTimer(duration)
 	<-timer.C
 	log.Println("Timer expired, key: ", key)
 	timeoutch <-key
 }
-func addMessage(floor int, direction bool) {
+func addMessage(floor uint, direction bool) {
 	key := generateKey(floor, direction)
 	message := liftnet.Message{
 		Id:        myID,
@@ -36,7 +37,7 @@ func addMessage(floor int, direction bool) {
 		TimeSent:  time.Now(),
 		TimeRecv:  time.Now()}
 
-	if val, ok := globalQueue[key]; !ok {
+	if _, ok := globalQueue[key]; !ok {
 		globalQueue[key] = message
 		toNetwork <- message
 		go timeout(key, newTimeout * time.Millisecond)
@@ -44,7 +45,7 @@ func addMessage(floor int, direction bool) {
 		log.Println("Order already in queue")
 	}
 }
-func delMessage(floor int, direction bool) {
+func delMessage(floor uint, direction bool) {
 	key := generateKey(floor, direction)
 	if val, ok := globalQueue[key]; !ok {
 		log.Println("Trying to remove nonexsiting message from queue")
@@ -92,74 +93,86 @@ func checkTimeout() {
 				delete(globalQueue, key)
 			} else if val.Status == liftnet.New {
 				log.Println("1x timeout")
-				newOrderTimeout(&val, 1)
+				newOrderTimeout(key, 1)
 			} else if val.Status == liftnet.Accepted {
 				log.Println("Accepted order timed out: ", val)
-				acceptedOrderTimeout(&val)
+				acceptedOrderTimeout(key)
 			}
 		}
 	}
 }
 //called form checktimout
-func newOrderTimeout(message *liftnet.Message, critical int) {
+func newOrderTimeout(key, critical uint) {
 	switch critical {
 	case 3:
-		takeOrder(message)
+		takeOrder(key)
 	case 2:
 		if isIdle {
-			takeOrder(message)
-	} else if figureOfSuitability(message, status) > 1 {
-			takeOrder(message)
+			takeOrder(key)
+	} else if figureOfSuitability(globalQueue[key], true, 1) > 1 {
+			takeOrder(key)
 		}
 	case 1:
 		if isIdle {
-			takeOrder(message)
+			takeOrder(key)
 		}
 	}
 }
 
 //called from checkTimout
-func acceptedOrderTimeout(message *liftnet.Message) {
+func acceptedOrderTimeout(key uint) {
 	log.Println("Some elevator didn't do as promised")
 	critical := 1
 	switch critical {
 	case 2:
-		takeOrder(message)
+		takeOrder(key)
 	case 1:
 		if isIdle {
-			takeOrder(message)
+			takeOrder(key)
 		}
 	}
 }
 
 // called from timeouts
-func takeOrder(message *liftnet.Message) {
-	log.Println("Accepted order", message)
-	*message.Id = myID
-	*message.Status = liftnet.Accepted
-	addLocalRequest(*message.Floor, *message.Direction)
-	toNetwork <- *message
+func takeOrder(key uint) {
+	log.Println("Accepted order", globalQueue[key])
+	msg := globalQueue[key] // TODO: Make pretty
+	msg.Id = myID
+	msg.Status = liftnet.Accepted
+	localQueue.AddLocalRequest(globalQueue[key].Floor, globalQueue[key].Direction)
+	globalQueue[key] = msg
+	toNetwork <- globalQueue[key]
 }
 
 // Nearest Car algorithm, returns Figure of Suitability
 // Lift with largest FS should accept the request
-func figureOfSuitability(request liftnet.Message, status FloorStatus) int {
+func figureOfSuitability(request liftnet.Message, statDir bool, statFlr uint) int {
+	MAXFLOOR := 4 // TODO: make pretty
 	reqDir := request.Direction
 	reqFlr := request.Floor
-	statDir := status.Direction
-	statFlr := status.Floor
 	if reqDir == statDir {
 		// lift moving towards the requested floor and the request is in the same direction
 		if (statDir && reqFlr > statFlr) || (!statDir && reqFlr < statFlr) {
-			fs := MAXFLOOR + 1 - diff(reqFlr, statFlr)
+			return MAXFLOOR + 1 - diff(reqFlr,statFlr)
 		}
 	} else {
 		// lift moving towards the requested floor, but the request is in oposite direction
 		if (statDir && reqFlr > statFlr) || (!statDir && reqFlr < statFlr) {
-			fs := MAXFLOOR - diff(reqFlr, statFlr)
+			return MAXFLOOR - diff(reqFlr,statFlr)
 		} else {
-			fs := 1
+			return 1
 		}
 	}
-	return fs
+	return 0
+}
+
+func diff(a, b uint) int {
+	x := int(a)
+	y := int(b)
+	c := x - y
+	if c < 0 {
+		return c* -1
+	} else {
+		return c
+	}
 }

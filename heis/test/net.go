@@ -27,6 +27,8 @@ func main() {
 	bla.TimeSent = time.Now()
 	bla.TimeRecv = time.Now()
 	send <- bla
-	as := <-recieved
-	fmt.Println(as)
+	for {
+		as := <-recieved
+		fmt.Println(as)
+	}
 }
