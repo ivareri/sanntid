@@ -10,11 +10,33 @@ const newTimeout = 40
 
 var globalQueue = make(map[int]liftnet.Message)
 
-func messageManager(message liftnet.Message) {
-	key := message.Floor
-	if message.Direction {
-		key += 10
+func generateKey(floor int, direction bool) int {
+	if direction {
+		floor += 10
 	}
+	return floor
+}
+
+func addMessage(floor int, direction bool) {
+	key := generateKey(floor, direction)
+	message := liftnet.Message{
+		Id:        myID,
+		Floor:     floor,
+		Direction: direction,
+		Status:    liftnet.New,
+		TimeSent:  time.Now(),
+		TimeRecv:  time.Now()}
+
+	if val, ok := globalQueue[key]; !ok {
+		globalQueue[key] = message
+		toNetwork <- message
+	} else {
+		log.Println("Order already in queue")
+	}
+}
+
+func messageManager(message liftnet.Message) {
+	key := generateKey(message.Floor, message.Direction)
 	if val, ok := globalQueue[key]; !ok {
 		globalQueue[key] = message
 	} else {
@@ -62,6 +84,7 @@ func checkTimeout() {
 	}
 }
 
+//called form checktimout
 func newOrderTimeout(message *liftnet.Message, critical int) {
 	switch critical {
 	case 3:
@@ -79,14 +102,7 @@ func newOrderTimeout(message *liftnet.Message, critical int) {
 	}
 }
 
-func takeOrder(message *liftnet.Message) {
-	log.Println("Accepted order", message)
-	*message.Id = myID
-	*message.Status = liftnet.Accepted
-	//TODO: add to local queue
-	toNetwork <- *message
-}
-
+//called from checkTimout
 func acceptedOrderTimout(message *liftnet.Message) {
 	log.Println("Some elevator didn't do as promised")
 	critical := 1
@@ -98,6 +114,15 @@ func acceptedOrderTimout(message *liftnet.Message) {
 			takeOrder(message)
 		}
 	}
+}
+
+// called from timeouts
+func takeOrder(message *liftnet.Message) {
+	log.Println("Accepted order", message)
+	*message.Id = myID
+	*message.Status = liftnet.Accepted
+	//TODO: add to local queue
+	toNetwork <- *message
 }
 
 // Nearest Car algorithm, returns Figure of Suitability
