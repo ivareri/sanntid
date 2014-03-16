@@ -1,4 +1,4 @@
-package globalqueue
+package elevatorControl
 
 import (
 	"liftnet/"
@@ -10,7 +10,7 @@ const newTimeout = 40
 
 var globalQueue = make(map[int]liftnet.Message)
 
-func newMessage(message liftnet.Message) {
+func messageManager(message liftnet.Message) {
 	key := message.Floor
 	if message.Direction {
 		key += 10
