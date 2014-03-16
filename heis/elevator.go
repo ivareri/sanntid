@@ -8,97 +8,75 @@ import (
 	"time"
 )
 
-// Initialize lift
-// Send orders to liftio
-// Asign lifts to requests
-// Add/delete orders/requests to/from locallocalQueue.Queue
+// Does excatly what it says
 func elevatorControl() {
-	locallocalQueue.Queue := localQueue.Queue{}
-	ReadlocalQueue.QueueFromFile(locallocalQueue.Queue) // If no previous queue:
-	// logs error: "queue.txt doesn't exitst"
-
-	floorOrder := make(chan uint)    	// channeling floor orders to io
-	buttonPress := make(chan Button) 	// channeling button presses from io
-	status := make(chan FloorStatus) 	// channeling the lifts status
-	// Rename to LiftStatus?
-	toNetwork := make(chan Message)   	// channeling messages to the network
-	fromNetwork := make(chan Message) 	// channeling messages to the network
-	light := make(chan Light)			
-
+	
+	floorOrder := make(chan uint)     		// floor orders to io
+	buttonPress := make(chan liftio.Button) // button presses from io
+	status := make(chan liftio.FloorStatus) // the lifts status
+	setLight := make(chan liftio.Light)		 
+	toNetwork := make(chan liftnet.Message)   
+	fromNetwork := make(chan liftnet.Message) 
+	
+	ReadQueueFromFile() // if no prev queue: "queue.txt doesn't exitst" entered in log
 	init(&floorOrder, &status)
 	MultiCastInit(&toNetwork, &fromNetwork)
+	go runIO(&buttonPress)
 
-	go ReadButtons(&buttonPress)
-	//go GetOrder(floorOrder)?
-
+	var orderedFloor uint = 1 // Not sure if this is the way to go
 	for {
 		select {
-		case buttonPressed := <-buttonPress:
-			if buttonPressed.button == Up || buttonPressed.button == Down {
-				log.Println("Request button %v pressed.", buttonPressed.button)
-				// to network or take self
-				// tell net anyhow
-				// if taken self: call GetOrder
-			} else if buttonPressed.button == Command {
-				log.Println("Command button %v pressed.", buttonPressed.Floor)
-				addLockalCommand(buttonPressed, locallocalQueue.Queue)
-				// call GetOrder
+		case button := <-buttonPress:
+			if button.Button == Up {
+				log.Println("Request button %v pressed.", button.Button)
+				addMessage(button.Floor, true)
+			} else if button.Button == Down {
+				log.Println("Request button %v pressed.", button.Button)
+				addMessage(button.Floor, true)
+			} else if button.Button == Command {
+				log.Println("Command button %v pressed.", button.Floor)
+				addLockalCommand(button, localQueue.Queue)
 			} else if buttonPressed.button == Stop {
 				log.Println("Stop button pressed")
-				// optional
+				// action optional
 			} else if buttonPressed.button == Obstuction {
 				log.Println("Obstruction")
-				// optional
+				// action optional
 			}
-		case message := <-fromNet: 
+		case floorReached := <-status:
+			orderedFloor = GetOrder(floorReached.Floor, floorReached.Direction)
+			// could lead to faulty behaviour, (if so: check more frequent)
+			floorOrder <- orderedFloor
+			if floorReached.Floor == orderedFloor {
+				setLight <- Light{0, Door, true}
+				time.Sleep(time.Second * 3)
+				setLight <- Light{0, Door, false}
+				DeleteLocalOrder(floorReached.Floor, FloorReached.Direction)
+				delMessage(floorReached.Floor, floorReached.Direction)
+				orderedFloor = GetOrder(floorReached.Floor, floorReached.Direction)
+				floorOrder <-orderedFloor
+			}
+		case message := <-fromNetwork:
 			if message.Status == liftnet.Done {
-				if message.Direction{
-					light <- Light{message.Floor, Up , false}
-				}else{
-					light <- Light{message.Floor, Down , false}
+				if message.Direction {
+					setLight <- Light{message.Floor, Up, false}
+				} else {
+					setLight <- Light{message.Floor, Down, false}
 				}
-				
+			} else if message.Status == liftnet.New {
+				if message.Direction {
+					setLight <- Light{message.Floor, Up, true}
+				} else {
+					setLight <- Light{message.Floor, Down, true}
+				}
+			} else if message.Status == liftnet.Accepted {
+
 			}
-			
-			
+			messageManager(message)
 		default:
-			log.Println("No buttons pressed.")
+			log.Println("No Action at all.")
 			// teit å skrive  ut hele tiden?
 		}
 	}
 
 }
-
-func assignLift(toNetwork) {
-	toNetwork <- jhk
-
-}
-
-// Nearest Car algorithm, returns Figure of Suitability
-// Lift with largest FS should accept the request
-func figureOfSuitability(request Message, status FloorStatus) int {
-	reqDir := request.Direction
-	reqFlr := request.Floor
-	statDir := status.Direction
-	statFlr := status.Floor
-	if reqDir == statDir {
-		// lift moving towards the requested floor and the request is in the same direction
-		if (statDir && reqFlr > statFlr) || (!statDir && reqFlr < statFlr) {
-			fs := MAXFLOOR + 1 - diff(reqFlr, statFlr)
-		}
-	} else {
-		// lift moving towards the requested floor, but the request is in oposite direction
-		if (statDir && reqFlr > statFlr) || (!statDir && reqFlr < statFlr) {
-			fs := MAXFLOOR - diff(reqFlr, statFlr)
-		} else {
-			fs := 1
-		}
-	}
-	return fs
-}
-
-// timer thingy
-// now := time.Now()
-// diff := now.sub(then)
-// sum := then.add(diff)
-// diff.Hours() osv -> Nanoseconds

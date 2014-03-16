@@ -1,40 +1,45 @@
 package localQueue
 
 import (
+	"../liftio"
 	"encoding/json"
 	"log"
 	"os"
-	"../liftio"
 )
 
-// change names to avoid confusion with buttons?
 type Queue struct {
-    Up      [4]bool
-    Down    [4]bool
-    Command [4]bool
+	Up      [4]bool
+	Down    [4]bool
+	Command [4]bool
 }
 
-// Writes localQueue.command to file for backup
-func writeQueueToFile(localQueue Queue) {
-	cmdQueue, err := json.Marshal(localQueue.Command)
-	if err != nil{
+const backupFile = "backupQueue.q"
+
+var localQueue := Queue{}
+
+// Called by elevatorControl
+// Write localQueue.command to backup file
+func writeQueueToFile() {
+	commandQueue, err := json.Marshal(localQueue.Command)
+	if err != nil {
 		log.Println(err)
 	}
-	file, err := os.Create("localQueue.txt")  
+	file, err := os.Create(backupFile)
 	if err != nil {
 		log.Println("Error in opening file ", err)
 	}
-	n, err := file.Write(cmdQueue) // overwrites existing file 
+	n, err := file.Write(commandQueue) // overwrites existing file
 	if err != nil {
 		log.Println("Error in writing to file ", err)
 	}
-	log.Println("wrote %d bytes\n to localQueue.txt", n)
+	log.Println("wrote %d bytes\n to %q", n, backupFile)
 	defer file.Close()
 }
 
-// Reads localQueue.Command from backup file
-func ReadQueueFromFile(localQueue Queue){
-	input, err := os.Open("queue.txt")
+// Called by elevatorControl
+// Read Command queue from backup file
+func ReadQueueFromFile() {
+	input, err := os.Open(backupFile)
 	if err != nil {
 		log.Println("Error in opening file: ", err)
 	}
@@ -45,96 +50,81 @@ func ReadQueueFromFile(localQueue Queue){
 	}
 	defer input.Close()
 	log.Println("Read %d bytes: %s from file\n", dat, string(byt))
-	if err :=json.Unmarshal(byt, &localQueue.Command); err != nil {
+	if err := json.Unmarshal(byt, &localQueue.Command); err != nil {
 		log.Println(err)
 	}
 }
 
-// Adds floor to local Queue and writes to file
-func AddLocalCommand(buttonPressed liftio.Button, localQueue Queue) {
-	SetLight(Light{buttonPressed.Floor, Command, true})
+// Called by elevatorControl
+// Add command to local Queue and writes to backup file
+func AddLocalCommand(buttonPressed liftio.Button) {
 	localQueue.Command[buttonPressed.Floor-1] = true
-	writeQueueToFile(localQueue, "localQueue")
+	writeQueueToFile(localQueue)
 }
 
-// Deletes floor from local Queue and writes to file
-func DeleteLocalCommand(floor uint, localQueue Queue) {
-	SetLight(Light{floor, Command, false})
-	localQueue.Command[floor-1] = false
-	writeQueueToFile(localQueue, "localQueue")
-}
-
-// Adds request to localQueue and writes to file
-func AddLocalRequest(manager chan button, localQueue Queue) {
-	buttonPressed := <-manager
-	SetLight(Light{buttonPressed.Floor, buttonPressed.Button, true})
-	if buttonPressed.button == Up {
-		localQueue.Up[buttonPressed.Floor] = true
+// Called by elevatorControl
+// Add request to localQueue 
+func AddLocalRequest(floor uint, direction bool) {
+	if direction {
+		localQueue.Up[floor] = true
 	} else {
-		localQueue.Down[buttonPressed.Floor] = true
+		localQueue.Down[floor] = true
 	}
 }
 
-// Deletes requests from localQueue and writes to file
-// Is direction ok to use to decide on which queue or does the braking fuck it up? 
-func DeleteLocalRequest(Direction bool, floor uint, localQueue Queue) {
+// Called by elevatorControl
+// Deletes orders from localQueue and writes to backup file
+func DeleteLocalOrder(floor uint, Direction bool) {
+	localQueue.Command[floor-1]= false
+	writeQueueToFile(localQueue)
 	if Direction {
-		SetLights(Light{floor, Up, false})
 		localQueue.Up[floor-1] = false
-		writeQueueToFile(localQueue, "localQueue")
 	} else {
-		SetLights(Light{floor, Down, false})
 		localQueue.Down[floor-1] = false
-		writeQueueToFile(localQueue, "localQueue")
 	}
 }
 
+// Called by elevatorControl
 // Returns next floor ordered from the local queue or 0 if empty
-func GetOrder(floorOrder chan uint, status chan FloorStatus, localQueue Queue) {
-	status := <-status
-	currentFloor := status.floor
+func GetOrder(currentFloor uint, direction bool) int{
 	currentIndex = int(currentFloor - 1)
-
-	if status.direction {
-		if next := checkUp(currentIndex, 3, localQueue); next && currentIndex != 3 {
-			floorOrder <- next
-		} else if next := checkDown(3, 0, localQueue); next {
-			floorOrder <- next
+	if direction {
+		if nextStop := checkUp(currentIndex, 3, localQueue); nextStop && currentIndex != 3 {
+			return nextStop
+		} else if next := checkDown(3, 0, localQueue); nextStop {
+			return nextStop
 		} else {
-			floorOrder <- checkUp(0, currentIndex, localQueue)
+			return checkUp(0, currentIndex, localQueue)
 		}
 	} else {
-		if next := checkDown(currentIndex, 0, localQueue); next && currentIndex != 3 {
-			floorOrder <- next
-		} else if next := checkUp(0, 3, localQueue); next {
-			floorOrder <- next
+		if nextStop := checkDown(currentIndex, 0, localQueue); nextStop && currentIndex != 3 {
+			return nextStop
+		} else if nextStop := checkUp(0, 3, localQueue); nextStop {
+			return nextStop
 		} else {
-			floorOrder <- checkDown(3, currentIndex, localQueue)
+			return checkDown(3, currentIndex, localQueue)
 		}
 	}
 }
 
-// Returns next floor ordered above current in UP queue or 0 if empty
+// Called by GetOrder()
+// Returns next floor ordered above current in Up queue or 0 if empty
 func checkUp(start int, stop int, lockalQueue Queue) int {
 	for i := start; i <= stop; i++ {
 		if localQueue.Up[i] || localQueue.Command[i] {
-			return i + 1
+			return uint(i + 1)
 		}
 	}
 	return 0
 }
 
-// Returns next floor ordered below current in DOWN queue or 0 if empty
+// Called by GetOrder()
+// Returns next floor ordered below current in Down queue or 0 if empty
 func checkDown(start int, stop int, lockalQueue Queue) int {
 	for i := floor; i >= stop; i-- {
 		if localQueue.Down[i] || localQueue.Command[i] {
-			return i + 1
+			return uint(i + 1)
 		}
 	}
 	return 0
 }
-
-
-
-
-
