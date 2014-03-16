@@ -51,7 +51,6 @@ func multicastSend(send chan Message, conn *net.UDPConn, addr *net.UDPAddr) {
 	for {
 		m := <-send
 		log.Println("Sending msg")
-		m.TimeSent = time.Now()
 		buf, err := json.Marshal(m)
 		if err != nil {
 			log.Println("Error encoding message: ", err)
