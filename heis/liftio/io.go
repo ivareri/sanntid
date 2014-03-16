@@ -71,9 +71,9 @@ func Init(floorOrder *chan uint, light *chan Light, floor *chan FloorStatus, but
 	io_clear_bit(LIGHT_DOWN2)
 	io_clear_bit(LIGHT_DOWN3)
 	io_clear_bit(LIGHT_DOWN4)
+	log.Println("Cleared lights. Starting go routines")
 	go runIO(button, light)
 	go runElevator(floorOrder, floor)
-	<-*floor
 	return true
 }
 

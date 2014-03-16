@@ -9,7 +9,6 @@ import (
 )
 
 var quit = make(chan bool)
-
 //Returns IPv4 address for lift
 func FindIP() (string, *net.Interface, error) {
 	ifaces, err := net.Interfaces()

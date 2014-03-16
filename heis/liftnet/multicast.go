@@ -18,7 +18,7 @@ const (
 // Used for communication between lifts
 type Message struct {
 	Id        int
-	Floor     int
+	Floor     uint
 	Direction bool
 	Status    Orderstatus
 	TimeSent  time.Time
