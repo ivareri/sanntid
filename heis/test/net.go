@@ -4,8 +4,8 @@ import (
 	"../liftnet/"
 	"fmt"
 	"log"
-	"time"
 	"strconv"
+	"time"
 )
 
 func main() {

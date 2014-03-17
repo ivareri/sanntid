@@ -7,8 +7,8 @@ import (
 	"time"
 )
 
-const acceptedTimeout = 1000
-const newTimeout = 100
+const acceptedTimeoutBase = 3
+const newTimeoutBase = 50
 
 var globalQueue = make(map[uint]liftnet.Message)
 
@@ -22,12 +22,6 @@ func generateKey(floor uint, direction bool) uint {
 	return floor
 }
 
-func timeout(key uint, duration time.Duration) {
-	timer := time.NewTimer(duration)
-	<-timer.C
-	log.Println("Timer expired, key: ", key)
-	timeoutch <- key
-}
 func addMessage(floor uint, direction bool) {
 	key := generateKey(floor, direction)
 	message := liftnet.Message{
@@ -38,20 +32,20 @@ func addMessage(floor uint, direction bool) {
 		TimeSent:  time.Now(),
 		TimeRecv:  time.Now()}
 
-	if _, ok := globalQueue[key]; !ok {
-		globalQueue[key] = message
-		orderLight(message)
-		toNetwork <- message
-		go timeout(key, newTimeout*time.Millisecond)
-	} else {
+	if _, ok := globalQueue[key]; ok {
 		log.Println("Order already in queue")
+		return
+	} else if isIdle {
+		message.Status = liftnet.Accepted
+		localQueue.AddLocalRequest(floor, direction)
 	}
+	globalQueue[key] = message
+	orderLight(message)
+	toNetwork <- message
 }
 func delMessage(floor uint, direction bool) {
 	key := generateKey(floor, direction)
-	if val, ok := globalQueue[key]; !ok {
-		log.Println("Trying to remove nonexsiting message from queue")
-	} else {
+	if val, ok := globalQueue[key]; ok {
 		val.Status = liftnet.Done
 		toNetwork <- val
 		delete(globalQueue, key)
@@ -63,10 +57,6 @@ func newMessage(message liftnet.Message) {
 	if val, ok := globalQueue[key]; !ok {
 		if val.Status == liftnet.Done {
 			return
-		} else if val.Status == liftnet.New {
-			go timeout(key, newTimeout *time.Millisecond)
-		} else if val.Status == liftnet.Accepted {
-			go timeout(key, acceptedTimeout *time.Millisecond)
 		}
 		globalQueue[key] = message
 	} else {
@@ -76,7 +66,6 @@ func newMessage(message liftnet.Message) {
 		case liftnet.Accepted:
 			if val.Status != liftnet.Accepted {
 				globalQueue[key] = message
-				go timeout(key, acceptedTimeout * time.Millisecond)
 			} else {
 				log.Println("Got new accept message for already accepted order.")
 				log.Println("Check timings on elevators: ", val.Id, message.Id)
@@ -90,23 +79,32 @@ func newMessage(message liftnet.Message) {
 }
 
 func checkTimeout() {
-	select {
-	default:
-		return
-	case key := <-timeoutch:
-
-		if val, ok := globalQueue[key]; !ok {
-			return
-		} else {
-			if val.Status == liftnet.Done {
-				toNetwork <- val
-				delete(globalQueue, key)
-			} else if val.Status == liftnet.New {
-				log.Println("1x timeout")
+	newTimeout := time.Duration(newTimeoutBase + (myID%10)*10)
+	acceptedTimeout := time.Duration(acceptedTimeoutBase + (myID / 10))
+	for key, val := range globalQueue {
+		if val.Status == liftnet.New {
+			timediff := time.Now().Sub(val.TimeRecv)
+			if timediff > ((3 * newTimeout) * time.Millisecond) {
+				log.Println("3x timeout")
 				newOrderTimeout(key, 3)
-			} else if val.Status == liftnet.Accepted {
-				log.Println("Accepted order timed out: ", val)
-				acceptedOrderTimeout(key)
+			} else if timediff > ((2 * newTimeout) * time.Millisecond) {
+				log.Println("2x timeout")
+				newOrderTimeout(key, 2)
+			} else if timediff > ((1 * newTimeout) * time.Millisecond) {
+				log.Println("1x timeout")
+				newOrderTimeout(key, 1)
+			}
+		} else if val.Status == liftnet.Accepted {
+			timediff := time.Now().Sub(val.TimeRecv)
+			if timediff > ((3 * acceptedTimeout) * time.Second) {
+				log.Println("3x accepted timeout")
+				acceptedOrderTimeout(key, 3)
+			} else if timediff > ((2 * acceptedTimeout) * time.Second) {
+				log.Println("2x accepted timeout")
+				acceptedOrderTimeout(key, 2)
+			} else if timediff > ((1 * acceptedTimeout) * time.Second) {
+				log.Println("1x accepted timeout")
+				acceptedOrderTimeout(key, 1)
 			}
 		}
 	}
@@ -131,10 +129,11 @@ func newOrderTimeout(key, critical uint) {
 }
 
 //called from checkTimout
-func acceptedOrderTimeout(key uint) {
+func acceptedOrderTimeout(key uint, critical uint) {
 	log.Println("Some elevator didn't do as promised")
-	critical := 1
 	switch critical {
+	case 3:
+		log.Println("Something went horribly wrong")
 	case 2:
 		takeOrder(key)
 	case 1:
@@ -150,6 +149,7 @@ func takeOrder(key uint) {
 	msg := globalQueue[key] // TODO: Make pretty
 	msg.Id = myID
 	msg.Status = liftnet.Accepted
+	msg.TimeRecv = time.Now()
 	localQueue.AddLocalRequest(globalQueue[key].Floor, globalQueue[key].Direction)
 	globalQueue[key] = msg
 	toNetwork <- globalQueue[key]

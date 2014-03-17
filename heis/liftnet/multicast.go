@@ -50,16 +50,13 @@ func MulticastInit(send *chan Message, recieved *chan Message, iface *net.Interf
 func multicastSend(send chan Message, conn *net.UDPConn, addr *net.UDPAddr) {
 	for {
 		m := <-send
-		log.Println("Sending msg")
 		buf, err := json.Marshal(m)
 		if err != nil {
 			log.Println("Error encoding message: ", err)
 		} else {
-			n, err := conn.WriteToUDP(buf, addr)
+			_, err := conn.WriteToUDP(buf, addr)
 			if err != nil {
 				log.Println("Error sending message", err)
-			} else {
-				log.Println("Sendt bytes", n)
 			}
 		}
 	}
@@ -71,7 +68,6 @@ func multicastRead(recieved chan Message, conn *net.UDPConn) {
 		if err != nil {
 			log.Println("error from ReadFrom:", err)
 		}
-		log.Println("Found message, lenght: ", l)
 		var m Message
 		er := json.Unmarshal(buf[:l], &m)
 		if er != nil {

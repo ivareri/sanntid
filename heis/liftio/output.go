@@ -30,7 +30,7 @@ func runMotor() {
 // Sets order\command lights
 // TODO: ugly beast. Should be a cleaner way of doing this
 func setLight(lightch chan Light) {
-	lightmap := []int {
+	lightmap := []int{
 		LIGHT_COMMAND1,
 		LIGHT_COMMAND2,
 		LIGHT_COMMAND3,
@@ -45,18 +45,18 @@ func setLight(lightch chan Light) {
 		LIGHT_DOWN4,
 		LIGHT_STOP,
 		DOOR_OPEN}
-	keyType := []int {
+	keyType := []int{
 		Command: -1,
-		Up: 3,
-		Down: 7,
-		Stop: 12,
-		Door: 13}
+		Up:      3,
+		Down:    7,
+		Stop:    12,
+		Door:    13}
 	select {
 	default:
 		return
 	case light := <-lightch:
 		if light.On {
-			io_set_bit(lightmap[keyType[int(light.Button)] + int(light.Floor)])
+			io_set_bit(lightmap[keyType[int(light.Button)]+int(light.Floor)])
 		} else {
 			io_clear_bit(lightmap[keyType[int(light.Button)]+int(light.Floor)])
 		}
@@ -65,6 +65,7 @@ func setLight(lightch chan Light) {
 		}
 	}
 }
+
 // Called from readFloorSensor
 func setFloorLight(floor int) {
 	if (floor < 1) || (floor > 4) {
