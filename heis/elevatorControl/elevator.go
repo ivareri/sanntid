@@ -18,7 +18,7 @@ var fromNetwork = make(chan liftnet.Message, 10)
 var floorOrder = make(chan uint, 5) // floor orders to io
 var setLight = make(chan liftio.Light, 5)
 
-// Does excatly what it says
+// Inits and runs elevator system
 func Run() {
 
 	buttonPress := make(chan liftio.Button, 5) // button presses from io
@@ -34,25 +34,9 @@ func Run() {
 	for {
 		select {
 		case button := <-buttonPress:
-			switch button.Button {
-			case liftio.Up:
-				log.Println("Request up button pressed.", button.Floor)
-				addMessage(button.Floor, true)
-			case liftio.Down:
-				log.Println("Request down button ressed.", button.Floor)
-				addMessage(button.Floor, false)
-			case liftio.Command:
-				log.Println("Command button pressed.", button.Floor)
-				addCommand(button.Floor)
-			case liftio.Stop:
-				log.Println("Stop button pressed")
-				// action optional
-			case liftio.Obstruction:
-				log.Println("Obstruction")
-				// action optional
-			}
+			newKeypress(button)
 		case floorReached = <-status:
-			log.Println("Passing floor: ", floorReached.Floor)
+			runQueue(floorReached)
 		case message := <-fromNetwork:
 			newMessage(message)
 			orderLight(message)
@@ -62,6 +46,28 @@ func Run() {
 			runQueue(floorReached)
 		}
 	}
+}
+
+// Called from run loop
+func newKeypress(button liftio.Button) {
+	switch button.Button {
+	case liftio.Up:
+		log.Println("Request up button pressed.", button.Floor)
+		addMessage(button.Floor, true)
+	case liftio.Down:
+		log.Println("Request down button ressed.", button.Floor)
+		addMessage(button.Floor, false)
+	case liftio.Command:
+		log.Println("Command button pressed.", button.Floor)
+		addCommand(button.Floor)
+	case liftio.Stop:
+		log.Println("Stop button pressed")
+		// action optional
+	case liftio.Obstruction:
+		log.Println("Obstruction")
+		// action optional
+	}
+
 }
 
 // Called from run loop
@@ -81,15 +87,25 @@ func runQueue(floorReached liftio.FloorStatus) {
 	if floorReached.Floor == order && !floorReached.Running {
 		removeFromQueue(order, direction)
 		lastOrder = 0
-		go openDoor()
-		isIdle = true
+		floorReached.Door = true
+		setLight <- liftio.Light{0, liftio.Door, true}
+		time.AfterFunc(3*time.Second, closeDoor)
+		time.Sleep(20 * time.Millisecond)
+		if order, _ := localQueue.GetOrder(floorReached.Floor, floorReached.Direction); order == 0 {
+			isIdle = true
+		}
 	} else {
 		isIdle = false
-		if lastOrder != order {
+		if lastOrder != order && !floorReached.Door {
 			lastOrder = order
 			floorOrder <- order
 		}
 	}
+}
+
+func closeDoor() {
+	log.Println("close door")
+	setLight <- liftio.Light{0, liftio.Door, false}
 }
 func removeFromQueue(floor uint, direction bool) {
 	log.Println("Removing from queue", floor, direction)
@@ -98,16 +114,6 @@ func removeFromQueue(floor uint, direction bool) {
 	setLight <- liftio.Light{floor, liftio.Command, false}
 	setOrderLight(floor, direction, false)
 
-}
-
-// Called from runQueue
-// io wrapper makes sure lift is stationary when door open
-func openDoor() {
-	log.Println("open door")
-	setLight <- liftio.Light{0, liftio.Door, true}
-	time.Sleep(time.Second * 3)
-	log.Println("close door")
-	setLight <- liftio.Light{0, liftio.Door, false}
 }
 
 // called from run loop and netsomething
