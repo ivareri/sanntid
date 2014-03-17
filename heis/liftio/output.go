@@ -15,7 +15,7 @@ func runMotor() {
 		if bla.speed == 0 {
 			bla.direction = !bla.direction
 		}
-		if bla.direction {
+		if !bla.direction {
 			io_set_bit(MOTORDIR)
 		} else {
 			io_clear_bit(MOTORDIR)
@@ -30,84 +30,41 @@ func runMotor() {
 // Sets order\command lights
 // TODO: ugly beast. Should be a cleaner way of doing this
 func setLight(lightch chan Light) {
+	lightmap := []int {
+		LIGHT_COMMAND1,
+		LIGHT_COMMAND2,
+		LIGHT_COMMAND3,
+		LIGHT_COMMAND4,
+		LIGHT_UP1,
+		LIGHT_UP2,
+		LIGHT_UP3,
+		LIGHT_UP4,
+		LIGHT_DOWN1,
+		LIGHT_DOWN2,
+		LIGHT_DOWN3,
+		LIGHT_DOWN4,
+		LIGHT_STOP,
+		DOOR_OPEN}
+	keyType := []int {
+		Command: -1,
+		Up: 3,
+		Down: 7,
+		Stop: 12,
+		Door: 13}
 	select {
 	default:
 		return
 	case light := <-lightch:
 		if light.On {
-			switch light.Floor {
-			case 1:
-				switch light.Button {
-				case Command:
-					io_set_bit(LIGHT_COMMAND1)
-				case Up:
-					io_set_bit(LIGHT_UP1)
-				}
-			case 2:
-				switch light.Button {
-				case Command:
-					io_set_bit(LIGHT_COMMAND2)
-				case Up:
-					io_set_bit(LIGHT_UP2)
-				case Down:
-					io_set_bit(LIGHT_DOWN2)
-				}
-			case 3:
-				switch light.Button {
-				case Command:
-					io_set_bit(LIGHT_COMMAND3)
-				case Up:
-					io_set_bit(LIGHT_UP3)
-				case Down:
-					io_set_bit(LIGHT_DOWN3)
-				}
-			case 4:
-				switch light.Button {
-				case Command:
-					io_set_bit(LIGHT_COMMAND4)
-				case Down:
-					io_set_bit(LIGHT_DOWN4)
-				}
-			}
+			io_set_bit(lightmap[keyType[int(light.Button)] + int(light.Floor)])
 		} else {
-			switch light.Floor {
-			case 1:
-				switch light.Button {
-				case Command:
-					io_clear_bit(LIGHT_COMMAND1)
-				case Up:
-					io_clear_bit(LIGHT_UP1)
-				}
-			case 2:
-				switch light.Button {
-				case Command:
-					io_clear_bit(LIGHT_COMMAND2)
-				case Up:
-					io_clear_bit(LIGHT_UP2)
-				case Down:
-					io_clear_bit(LIGHT_DOWN2)
-				}
-			case 3:
-				switch light.Button {
-				case Command:
-					io_clear_bit(LIGHT_COMMAND3)
-				case Up:
-					io_clear_bit(LIGHT_UP3)
-				case Down:
-					io_clear_bit(LIGHT_DOWN3)
-				}
-			case 4:
-				switch light.Button {
-				case Command:
-					io_clear_bit(LIGHT_COMMAND4)
-				case Down:
-					io_clear_bit(LIGHT_DOWN4)
-				}
-			}
+			io_clear_bit(lightmap[keyType[int(light.Button)]+int(light.Floor)])
+		}
+		if light.Button == Door {
+			doorOpen = light.On
 		}
 	}
 }
-
 // Called from readFloorSensor
 func setFloorLight(floor int) {
 	if (floor < 1) || (floor > 4) {
@@ -126,28 +83,5 @@ func setFloorLight(floor int) {
 	case 4:
 		io_set_bit(FLOOR_IND1)
 		io_set_bit(FLOOR_IND2)
-	}
-}
-
-// Currently only sets the stop light.
-// Future revisions should implement actual emergency stop procedures
-func EmergencyStop(stop bool) {
-	if stop {
-		io_set_bit(LIGHT_STOP)
-	} else {
-		io_clear_bit(LIGHT_STOP)
-	}
-}
-
-// Open\close door. Does not automaticly close door
-// Lift will not run while door open
-// TODO: Check obstruction before closing door
-func openDoor(open bool) {
-	if open {
-		io_set_bit(DOOR_OPEN)
-		doorOpen = true
-	} else {
-		io_clear_bit(DOOR_OPEN)
-		doorOpen = false
 	}
 }

@@ -7,10 +7,11 @@ import (
 	"time"
 )
 
-const acceptedTimeout = 400
-const newTimeout = 40
+const acceptedTimeout = 1000
+const newTimeout = 100
 
 var globalQueue = make(map[uint]liftnet.Message)
+
 // TODO: Find appropriate channel size
 var timeoutch = make(chan uint, 100)
 
@@ -25,7 +26,7 @@ func timeout(key uint, duration time.Duration) {
 	timer := time.NewTimer(duration)
 	<-timer.C
 	log.Println("Timer expired, key: ", key)
-	timeoutch <-key
+	timeoutch <- key
 }
 func addMessage(floor uint, direction bool) {
 	key := generateKey(floor, direction)
@@ -39,8 +40,9 @@ func addMessage(floor uint, direction bool) {
 
 	if _, ok := globalQueue[key]; !ok {
 		globalQueue[key] = message
+		orderLight(message)
 		toNetwork <- message
-		go timeout(key, newTimeout * time.Millisecond)
+		go timeout(key, newTimeout*time.Millisecond)
 	} else {
 		log.Println("Order already in queue")
 	}
@@ -51,14 +53,21 @@ func delMessage(floor uint, direction bool) {
 		log.Println("Trying to remove nonexsiting message from queue")
 	} else {
 		val.Status = liftnet.Done
-		toNetwork<-val
+		toNetwork <- val
 		delete(globalQueue, key)
 	}
 }
 
-func messageManager(message liftnet.Message) {
+func newMessage(message liftnet.Message) {
 	key := generateKey(message.Floor, message.Direction)
 	if val, ok := globalQueue[key]; !ok {
+		if val.Status == liftnet.Done {
+			return
+		} else if val.Status == liftnet.New {
+			go timeout(key, newTimeout *time.Millisecond)
+		} else if val.Status == liftnet.Accepted {
+			go timeout(key, acceptedTimeout *time.Millisecond)
+		}
 		globalQueue[key] = message
 	} else {
 		switch message.Status {
@@ -67,6 +76,7 @@ func messageManager(message liftnet.Message) {
 		case liftnet.Accepted:
 			if val.Status != liftnet.Accepted {
 				globalQueue[key] = message
+				go timeout(key, acceptedTimeout * time.Millisecond)
 			} else {
 				log.Println("Got new accept message for already accepted order.")
 				log.Println("Check timings on elevators: ", val.Id, message.Id)
@@ -89,11 +99,11 @@ func checkTimeout() {
 			return
 		} else {
 			if val.Status == liftnet.Done {
-				toNetwork <-val
+				toNetwork <- val
 				delete(globalQueue, key)
 			} else if val.Status == liftnet.New {
 				log.Println("1x timeout")
-				newOrderTimeout(key, 1)
+				newOrderTimeout(key, 3)
 			} else if val.Status == liftnet.Accepted {
 				log.Println("Accepted order timed out: ", val)
 				acceptedOrderTimeout(key)
@@ -101,6 +111,7 @@ func checkTimeout() {
 		}
 	}
 }
+
 //called form checktimout
 func newOrderTimeout(key, critical uint) {
 	switch critical {
@@ -109,7 +120,7 @@ func newOrderTimeout(key, critical uint) {
 	case 2:
 		if isIdle {
 			takeOrder(key)
-	} else if figureOfSuitability(globalQueue[key], true, 1) > 1 {
+		} else if figureOfSuitability(globalQueue[key], true, 1) > 1 {
 			takeOrder(key)
 		}
 	case 1:
@@ -153,12 +164,12 @@ func figureOfSuitability(request liftnet.Message, statDir bool, statFlr uint) in
 	if reqDir == statDir {
 		// lift moving towards the requested floor and the request is in the same direction
 		if (statDir && reqFlr > statFlr) || (!statDir && reqFlr < statFlr) {
-			return MAXFLOOR + 1 - diff(reqFlr,statFlr)
+			return MAXFLOOR + 1 - diff(reqFlr, statFlr)
 		}
 	} else {
 		// lift moving towards the requested floor, but the request is in oposite direction
 		if (statDir && reqFlr > statFlr) || (!statDir && reqFlr < statFlr) {
-			return MAXFLOOR - diff(reqFlr,statFlr)
+			return MAXFLOOR - diff(reqFlr, statFlr)
 		} else {
 			return 1
 		}
@@ -171,7 +182,7 @@ func diff(a, b uint) int {
 	y := int(b)
 	c := x - y
 	if c < 0 {
-		return c* -1
+		return c * -1
 	} else {
 		return c
 	}

@@ -38,6 +38,7 @@ type FloorStatus struct {
 	Running   bool
 	Floor     uint
 	Direction bool
+	DoorOpen bool
 }
 
 type motorType struct {
@@ -80,10 +81,10 @@ func Init(floorOrder *chan uint, light *chan Light, floor *chan FloorStatus, but
 // Threads writing\reading from IO might cause bugs
 func runIO(button *chan Button, light *chan Light) {
 	for {
+		setLight(*light)
 		readFloorSensor()
 		runMotor()
 		readButtons(*button)
-		setLight(*light)
 		time.Sleep(5 * time.Millisecond)
 	}
 }
@@ -128,34 +129,42 @@ func runElevator(floorOrder *chan uint, floor *chan FloorStatus) {
 				motor <- motorType{0, lastFloor.Direction}
 				lastFloor.Floor = currentFloor
 				floorStop = 0
-				lastFloor.Floor = currentFloor
 				lastFloor.Running = false
+				log.Println("a")
 				*floor <- lastFloor
+				break
 			}
-			if currentFloor > 1 && currentFloor <= MAXFLOOR {
+			if currentFloor > 1 && currentFloor <= MAXFLOOR && lastFloor.Floor != currentFloor {
 				lastFloor.Floor = currentFloor
 				*floor <- lastFloor
+				log.Println("b")
 			}
-			if currentFloor == 1 || currentFloor == MAXFLOOR {
+			if lastFloor.Running && (currentFloor == 1 || currentFloor == MAXFLOOR) {
+				log.Println("Floor limit reached. Stopping")
 				motor <- motorType{0, lastFloor.Direction}
 				lastFloor.Floor = currentFloor
 				lastFloor.Running = false
 				*floor <- lastFloor
+				log.Println("c")
 			}
 		default:
 			if floorStop == 0 {
 				break
 			}
 			if floorStop < lastFloor.Floor {
-				lastFloor.Direction = true
-			} else {
 				lastFloor.Direction = false
+			} else {
+				lastFloor.Direction = true
 			}
-			if !doorOpen && !lastFloor.Running {
+			if lastFloor.Floor == floorStop {
+				*floor <- lastFloor
+				log.Println("d", lastFloor.Floor, floorStop)
+			} else if !doorOpen && !lastFloor.Running {
 				motor <- motorType{DEFAULTSPEED, lastFloor.Direction}
 				lastFloor.Floor = currentFloor
 				lastFloor.Running = true
 				*floor <- lastFloor
+				log.Println("e")
 			}
 		}
 	}

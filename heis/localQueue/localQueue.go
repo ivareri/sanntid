@@ -1,7 +1,6 @@
 package localQueue
 
 import (
-	"../liftio"
 	"encoding/json"
 	"log"
 	"os"
@@ -13,7 +12,7 @@ type Queue struct {
 	Command [4]bool
 }
 
-const backupFile = "backupQueue.q"
+const BackupFile = "backupQueue.q"
 
 var localQueue = Queue{}
 
@@ -24,7 +23,7 @@ func writeQueueToFile() {
 	if err != nil {
 		log.Println(err)
 	}
-	file, err := os.Create(backupFile)
+	file, err := os.Create(BackupFile)
 	if err != nil {
 		log.Println("Error in opening file ", err)
 	}
@@ -32,35 +31,13 @@ func writeQueueToFile() {
 	if err != nil {
 		log.Println("Error in writing to file ", err)
 	}
-	log.Println("wrote %d bytes\n to %q", n, backupFile)
-	defer file.Close()
-}
-
-// Called by elevatorControl
-// Read Command queue from backup file
-func ReadQueueFromFile() {
-	input, err := os.Open(backupFile)
-	if err != nil {
-		log.Println("Error in opening file: ", err)
-		return
-	}
-	byt := make([]byte, 23)
-	dat, err := input.Read(byt)
-	if err != nil {
-		log.Println("Error in reading file: ", err)
-		return
-	}
-	defer input.Close()
-	log.Println("Read %d bytes: %s from file\n", dat, string(byt))
-	if err := json.Unmarshal(byt, &localQueue.Command); err != nil {
-		log.Println(err)
-	}
+	log.Println("wrote, ", n, " bytes to ", BackupFile)
 }
 
 // Called by elevatorControl
 // Add command to local Queue and writes to backup file
-func AddLocalCommand(buttonPressed liftio.Button) {
-	localQueue.Command[buttonPressed.Floor-1] = true
+func AddLocalCommand(floor uint) {
+	localQueue.Command[floor-1] = true
 	writeQueueToFile()
 }
 
@@ -68,9 +45,9 @@ func AddLocalCommand(buttonPressed liftio.Button) {
 // Add request to localQueue
 func AddLocalRequest(floor uint, direction bool) {
 	if direction {
-		localQueue.Up[floor] = true
+		localQueue.Up[floor-1] = true
 	} else {
-		localQueue.Down[floor] = true
+		localQueue.Down[floor-1] = true
 	}
 }
 
@@ -88,44 +65,49 @@ func DeleteLocalOrder(floor uint, Direction bool) {
 
 // Called by elevatorControl
 // Returns next floor ordered from the local queue or 0 if empty
-func GetOrder(currentFloor uint, direction bool) uint {
-	currentIndex := int(currentFloor - 1)
+func GetOrder(currentFloor uint, direction bool) (uint, bool) {
 	if direction {
-		if nextStop := checkUp(currentIndex, 3, localQueue); nextStop > 0 && currentIndex != 3 {
-			return nextStop
-		} else if nextStop := checkDown(3, 0, localQueue); nextStop > 0 {
-			return nextStop
+		if nextStop := checkUp(currentFloor, 4); nextStop > 0 {
+			return nextStop, true
+		} else if nextStop := checkDown(4, 1); nextStop > 0 {
+			return nextStop, false
 		} else {
-			return checkUp(0, currentIndex, localQueue)
+			return checkUp(1, 4), true
 		}
 	} else {
-		if nextStop := checkDown(currentIndex, 0, localQueue); nextStop > 0 && currentIndex != 3 {
-			return nextStop
-		} else if nextStop := checkUp(0, 3, localQueue); nextStop > 0 {
-			return nextStop
+		if nextStop := checkDown(currentFloor, 1); nextStop > 0  {
+			return nextStop, false
+		} else if nextStop := checkUp(1, 4); nextStop > 0 {
+			return nextStop, true
 		} else {
-			return checkDown(3, currentIndex, localQueue)
+			return checkDown(4, 1), false
 		}
 	}
 }
 
 // Called by GetOrder()
-// Returns next floor ordered above current in Up queue or 0 if empty
-func checkUp(start int, stop int, lockalQueue Queue) uint {
-	for i := start; i <= stop; i++ {
-		if localQueue.Up[i] || localQueue.Command[i] {
-			return  uint(i + 1)
+// Returns floor for next order above current in Up queue or 0 if empty
+func checkUp(start uint, stop uint) uint {
+	for i := int(start) - 1; i <= int(stop) - 1; i++ {
+		if i > 3 || i < 0 {
+			log.Println("Out of bounds UP. Stop: ", stop, " start: ", start, " i: ", i)
+			return 0
+		} else if localQueue.Up[i] || localQueue.Command[i] {
+			return uint(i+1)
 		}
 	}
 	return 0
 }
 
 // Called by GetOrder()
-// Returns next floor ordered below current in Down queue or 0 if empty
-func checkDown(start int, stop int, lockalQueue Queue) uint {
-	for i := start; i >= stop; i-- {
-		if localQueue.Down[i] || localQueue.Command[i] {
-			return uint(i + 1)
+// Returns floor for next floor order below current in Down queue or 0 if empty
+func checkDown(start uint, stop uint) uint {
+	for i := int(start)-1; i >= int(stop)-1; i-- {
+		if i > 3 || i < 0 {
+			log.Println("Out of bounds Down. Stop: ", stop, " start: ", start, " i: ", i)
+			return 0
+		} else if localQueue.Down[i] || localQueue.Command[i] {
+			return uint(i+1)
 		}
 	}
 	return 0
