@@ -9,6 +9,18 @@ import (
 )
 
 var quit = make(chan bool)
+
+// Sets up mulitcast and returns and ID from ip
+func Init(send *chan Message, recv *chan Message) int {
+	addr, iface, err := FindIP()
+	if err != nil {
+		log.Fatal("Error finding interface", err)
+		return 0
+	}
+	go MulticastInit(send, recv, iface)
+	return FindID(addr)
+}
+
 //Returns IPv4 address for lift
 func FindIP() (string, *net.Interface, error) {
 	ifaces, err := net.Interfaces()

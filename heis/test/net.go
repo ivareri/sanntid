@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"time"
+	"strconv"
 )
 
 func main() {
@@ -15,7 +16,7 @@ func main() {
 	fmt.Println(liftnet.FindID(a))
 	send := make(chan liftnet.Message)
 	recieved := make(chan liftnet.Message)
-	go liftnet.MulticastInit(send, recieved, iface)
+	go liftnet.MulticastInit(&send, &recieved, iface)
 	time.Sleep(20 * time.Millisecond)
 	log.Println(iface.MulticastAddrs())
 
@@ -29,7 +30,7 @@ func main() {
 	send <- bla
 	for {
 		as := <-recieved
-		fmt.Println("Id: " + string(as.Id) + " Floor: " + string(as.Floor) + "Status: " + string(as.Status))
+		fmt.Println("Id: " + strconv.Itoa(int(as.Id)) + " Floor: " + strconv.Itoa(int(as.Floor)) + "Status: " + strconv.Itoa(int(as.Status)))
 
 	}
 }

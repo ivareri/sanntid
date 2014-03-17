@@ -1,94 +1,161 @@
 package elevatorControl
 
 import (
-	"../liftnet"
 	"../liftio"
+	"../liftnet"
 	"../localQueue"
 	"log"
 	"time"
+	"encoding/json"
+	"os"
 )
 
 var myID int
 var isIdle bool
+var lastOrder = uint(0)
 var toNetwork = make(chan liftnet.Message, 10)
 var fromNetwork = make(chan liftnet.Message, 10)
-
+var floorOrder = make(chan uint, 5)           // floor orders to io
+var setLight = make(chan liftio.Light, 5)
 // Does excatly what it says
 func Run() {
 
-	floorOrder := make(chan uint, 5)           // floor orders to io
 	buttonPress := make(chan liftio.Button, 5) // button presses from io
 	status := make(chan liftio.FloorStatus, 5) // the lifts status
-	setLight := make(chan liftio.Light, 5)
 
-	localQueue.ReadQueueFromFile() // if no prev queue: "queue.txt doesn't exitst" entered in log
+	myID = liftnet.Init(&toNetwork, &fromNetwork)
 	liftio.Init(&floorOrder, &setLight, &status, &buttonPress)
-	addr, iface, err := liftnet.FindIP()
-	if err != nil {
-		log.Println("Error finding interface", err)
-	}
-	go liftnet.MulticastInit(toNetwork, fromNetwork, iface)
-	myID = liftnet.FindID(addr)
-	var orderedFloor uint = 1 // Not sure if this is the way to go
+	readQueueFromFile() // if no prev queue: "queue.txt doesn't exitst" entered in log
 	floorReached := <-status
+	ticker1 := time.NewTicker(10 * time.Millisecond).C
+	ticker2 := time.NewTicker(5 * time.Millisecond).C
 	for {
 		select {
 		case button := <-buttonPress:
-			if button.Button == liftio.Up {
+			switch button.Button {
+			case liftio.Up:
 				log.Println("Request up button pressed.", button.Floor)
 				addMessage(button.Floor, true)
-			} else if button.Button == liftio.Down {
+			case liftio.Down:
 				log.Println("Request down button ressed.", button.Floor)
-				addMessage(button.Floor, true)
-			} else if button.Button == liftio.Command {
-				log.Println("Command button %v pressed.", button.Floor)
-				localQueue.AddLocalCommand(button)
-			} else if button.Button == liftio.Stop {
+				addMessage(button.Floor, false)
+			case liftio.Command:
+				log.Println("Command button pressed.", button.Floor)
+				addCommand(button.Floor)
+			case liftio.Stop:
 				log.Println("Stop button pressed")
 				// action optional
-			} else if button.Button == liftio.Obstruction {
+			case liftio.Obstruction:
 				log.Println("Obstruction")
 				// action optional
 			}
 		case floorReached = <-status:
 			log.Println("Passing floor: ", floorReached.Floor)
-		default:
-			order := localQueue.GetOrder(floorReached.Floor, floorReached.Direction)
-			if floorReached.Floor != 0 && floorReached.Floor == order {
-				setLight <- liftio.Light{0, liftio.Door, true}
-				time.Sleep(time.Second * 3)
-				setLight <- liftio.Light{0, liftio.Door, false}
-				localQueue.DeleteLocalOrder(floorReached.Floor, floorReached.Direction)
-				delMessage(floorReached.Floor, floorReached.Direction)
-				orderedFloor = localQueue.GetOrder(floorReached.Floor, floorReached.Direction)
-				if orderedFloor != 0 {
-					isIdle = false
-					floorOrder <- orderedFloor
-				} else {
-					isIdle =true
-				}
-			} else if order != 0 {
-				floorOrder <-order
-			}
-			time.Sleep(10 * time.Millisecond)
 		case message := <-fromNetwork:
-			if message.Status == liftnet.Done {
-				if message.Direction {
-					setLight <- liftio.Light{message.Floor, liftio.Up, false}
-				} else {
-					setLight <- liftio.Light{message.Floor, liftio.Down, false}
-				}
-			} else if message.Status == liftnet.New {
-				if message.Direction {
-					setLight <- liftio.Light{message.Floor, liftio.Up, true}
-				} else {
-					setLight <- liftio.Light{message.Floor, liftio.Down, true}
-				}
-			} else if message.Status == liftnet.Accepted {
-
-			}
-			messageManager(message)
+			newMessage(message)
+			orderLight(message)
+		case <-ticker1:
+			checkTimeout()
+		case <-ticker2:
+			runQueue(floorReached)
 		}
 	}
+}
 
+// Called from run loop
+func runQueue(floorReached liftio.FloorStatus) {
+	floor := floorReached.Floor
+	if floorReached.Running {
+		if floorReached.Direction {
+			floor++
+		} else {
+			floor--
+		}
+	}
+	order, direction := localQueue.GetOrder(floor, floorReached.Direction)
+	if order == 0  {
+		return
+	}
+	if floorReached.Floor == order && !floorReached.Running {
+		removeFromQueue(order, direction)
+		lastOrder = 0
+		go openDoor()
+		isIdle = true
+	} else {
+		isIdle = false
+		if lastOrder != order {
+			lastOrder = order
+			floorOrder <- order
+		}
+	}
+}
+func removeFromQueue(floor uint, direction bool) {
+	log.Println("Removing from queue", floor, direction)
+	localQueue.DeleteLocalOrder(floor, direction)
+	delMessage(floor, direction)
+	setLight <- liftio.Light{floor, liftio.Command, false}
+	setOrderLight(floor, direction, false)
+
+}
+// Called from runQueue
+// io wrapper makes sure lift is stationary when door open
+func openDoor() {
+	log.Println("open door")
+	setLight <-liftio.Light{0, liftio.Door, true}
+	time.Sleep(time.Second * 3)
+	log.Println("close door")
+	setLight <-liftio.Light{0, liftio.Door, false}
+}
+
+// called from run loop and netsomething
+func orderLight(message liftnet.Message) {
+	switch message.Status {
+	case liftnet.Done:
+		setOrderLight(message.Floor, message.Direction, false)
+	case liftnet.New:
+		setOrderLight(message.Floor, message.Direction, true)
+	case liftnet.Accepted:
+		setOrderLight(message.Floor, message.Direction, true)
+	}
+}
+
+// called from orderLight
+func setOrderLight(floor uint, direction bool, on bool) {
+	if direction {
+		setLight <- liftio.Light{floor, liftio.Up, on}
+	} else {
+		setLight <- liftio.Light{floor, liftio.Down, on}
+	}
+}
+
+// called by run and ReadQueuFromFile
+func addCommand(floor uint) {
+	localQueue.AddLocalCommand(floor)
+	setLight <- liftio.Light{floor, liftio.Command, true}
+}
+
+// Called by run
+func readQueueFromFile() {
+        input, err := os.Open(localQueue.BackupFile)
+        if err != nil {
+                log.Println("Error in opening file: ", err)
+                return
+        }
+        defer input.Close()
+        byt := make([]byte, 23)
+        dat, err := input.Read(byt)
+        if err != nil {
+                log.Println("Error in reading file: ", err)
+                return
+        }
+        log.Println("Read ", dat, " bytes from file ")
+	var cmd []bool
+        if err := json.Unmarshal(byt, &cmd); err != nil {
+                log.Println(err)
+        }
+	for i, val := range(cmd) {
+		if val {
+			addCommand(uint(i+1))
+		}
+	}
 }
