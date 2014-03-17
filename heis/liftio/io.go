@@ -38,7 +38,7 @@ type FloorStatus struct {
 	Running   bool
 	Floor     uint
 	Direction bool
-	DoorOpen bool
+	DoorOpen  bool
 }
 
 type motorType struct {

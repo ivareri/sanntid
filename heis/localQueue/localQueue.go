@@ -27,11 +27,10 @@ func writeQueueToFile() {
 	if err != nil {
 		log.Println("Error in opening file ", err)
 	}
-	n, err := file.Write(commandQueue) // overwrites existing file
+	_, err = file.Write(commandQueue) // overwrites existing file
 	if err != nil {
 		log.Println("Error in writing to file ", err)
 	}
-	log.Println("wrote, ", n, " bytes to ", BackupFile)
 }
 
 // Called by elevatorControl
@@ -75,7 +74,7 @@ func GetOrder(currentFloor uint, direction bool) (uint, bool) {
 			return checkUp(1, 4), true
 		}
 	} else {
-		if nextStop := checkDown(currentFloor, 1); nextStop > 0  {
+		if nextStop := checkDown(currentFloor, 1); nextStop > 0 {
 			return nextStop, false
 		} else if nextStop := checkUp(1, 4); nextStop > 0 {
 			return nextStop, true
@@ -88,12 +87,12 @@ func GetOrder(currentFloor uint, direction bool) (uint, bool) {
 // Called by GetOrder()
 // Returns floor for next order above current in Up queue or 0 if empty
 func checkUp(start uint, stop uint) uint {
-	for i := int(start) - 1; i <= int(stop) - 1; i++ {
+	for i := int(start) - 1; i <= int(stop)-1; i++ {
 		if i > 3 || i < 0 {
 			log.Println("Out of bounds UP. Stop: ", stop, " start: ", start, " i: ", i)
 			return 0
 		} else if localQueue.Up[i] || localQueue.Command[i] {
-			return uint(i+1)
+			return uint(i + 1)
 		}
 	}
 	return 0
@@ -102,12 +101,12 @@ func checkUp(start uint, stop uint) uint {
 // Called by GetOrder()
 // Returns floor for next floor order below current in Down queue or 0 if empty
 func checkDown(start uint, stop uint) uint {
-	for i := int(start)-1; i >= int(stop)-1; i-- {
+	for i := int(start) - 1; i >= int(stop)-1; i-- {
 		if i > 3 || i < 0 {
 			log.Println("Out of bounds Down. Stop: ", stop, " start: ", start, " i: ", i)
 			return 0
 		} else if localQueue.Down[i] || localQueue.Command[i] {
-			return uint(i+1)
+			return uint(i + 1)
 		}
 	}
 	return 0

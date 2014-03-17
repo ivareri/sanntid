@@ -4,19 +4,20 @@ import (
 	"../liftio"
 	"../liftnet"
 	"../localQueue"
-	"log"
-	"time"
 	"encoding/json"
+	"log"
 	"os"
+	"time"
 )
 
 var myID int
-var isIdle bool
+var isIdle = true
 var lastOrder = uint(0)
 var toNetwork = make(chan liftnet.Message, 10)
 var fromNetwork = make(chan liftnet.Message, 10)
-var floorOrder = make(chan uint, 5)           // floor orders to io
+var floorOrder = make(chan uint, 5) // floor orders to io
 var setLight = make(chan liftio.Light, 5)
+
 // Does excatly what it says
 func Run() {
 
@@ -29,6 +30,7 @@ func Run() {
 	floorReached := <-status
 	ticker1 := time.NewTicker(10 * time.Millisecond).C
 	ticker2 := time.NewTicker(5 * time.Millisecond).C
+	log.Println("Up and running")
 	for {
 		select {
 		case button := <-buttonPress:
@@ -73,7 +75,7 @@ func runQueue(floorReached liftio.FloorStatus) {
 		}
 	}
 	order, direction := localQueue.GetOrder(floor, floorReached.Direction)
-	if order == 0  {
+	if order == 0 {
 		return
 	}
 	if floorReached.Floor == order && !floorReached.Running {
@@ -97,14 +99,15 @@ func removeFromQueue(floor uint, direction bool) {
 	setOrderLight(floor, direction, false)
 
 }
+
 // Called from runQueue
 // io wrapper makes sure lift is stationary when door open
 func openDoor() {
 	log.Println("open door")
-	setLight <-liftio.Light{0, liftio.Door, true}
+	setLight <- liftio.Light{0, liftio.Door, true}
 	time.Sleep(time.Second * 3)
 	log.Println("close door")
-	setLight <-liftio.Light{0, liftio.Door, false}
+	setLight <- liftio.Light{0, liftio.Door, false}
 }
 
 // called from run loop and netsomething
@@ -136,26 +139,26 @@ func addCommand(floor uint) {
 
 // Called by run
 func readQueueFromFile() {
-        input, err := os.Open(localQueue.BackupFile)
-        if err != nil {
-                log.Println("Error in opening file: ", err)
-                return
-        }
-        defer input.Close()
-        byt := make([]byte, 23)
-        dat, err := input.Read(byt)
-        if err != nil {
-                log.Println("Error in reading file: ", err)
-                return
-        }
-        log.Println("Read ", dat, " bytes from file ")
+	input, err := os.Open(localQueue.BackupFile)
+	if err != nil {
+		log.Println("Error in opening file: ", err)
+		return
+	}
+	defer input.Close()
+	byt := make([]byte, 23)
+	dat, err := input.Read(byt)
+	if err != nil {
+		log.Println("Error in reading file: ", err)
+		return
+	}
+	log.Println("Read ", dat, " bytes from file ")
 	var cmd []bool
-        if err := json.Unmarshal(byt, &cmd); err != nil {
-                log.Println(err)
-        }
-	for i, val := range(cmd) {
+	if err := json.Unmarshal(byt, &cmd); err != nil {
+		log.Println(err)
+	}
+	for i, val := range cmd {
 		if val {
-			addCommand(uint(i+1))
+			addCommand(uint(i + 1))
 		}
 	}
 }
