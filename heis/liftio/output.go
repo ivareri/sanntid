@@ -5,8 +5,6 @@ import (
 	"time"
 )
 
-var doorOpen bool
-
 // Called from runElevator
 func runMotor() {
 	// Invert direction in order to break elevator before stopping
@@ -61,7 +59,7 @@ func setLight(lightch chan Light) {
 			io_clear_bit(lightmap[keyType[int(light.Button)]+int(light.Floor)])
 		}
 		if light.Button == Door {
-			doorOpen = light.On
+			doorch <- light.On
 		}
 	}
 }
