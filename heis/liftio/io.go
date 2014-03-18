@@ -49,7 +49,7 @@ type motorType struct {
 var (
 	floorSeen = make(chan uint, 5)
 	motor     = make(chan motorType, 5)
-	doorch    = make(chan bool)
+	doorch 	  = make(chan bool, 5)
 )
 
 // Initilazes hardware and starts IO routines
@@ -86,7 +86,7 @@ func runIO(button *chan Button, light *chan Light) {
 		readFloorSensor()
 		runMotor()
 		readButtons(*button)
-		time.Sleep(1 * time.Millisecond)
+		time.Sleep(5 * time.Millisecond)
 	}
 }
 
@@ -127,33 +127,9 @@ func runElevator(floorOrder *chan uint, floor *chan FloorStatus) {
 				floorStop = newFloorStop
 			}
 		case currentFloor = <-floorSeen:
-			switch currentFloor {
-			case 0:
-				break
-			case 1:
-				motor <- motorType{0, lastFloor.Direction}
-				lastFloor.Floor = currentFloor
-				lastFloor.Running = false
-				*floor <- lastFloor
-			case MAXFLOOR:
-				motor <- motorType{0, lastFloor.Direction}
-				lastFloor.Floor = currentFloor
-				lastFloor.Running = false
-				*floor <- lastFloor
-			case floorStop:
-				motor <- motorType{0, lastFloor.Direction}
-				lastFloor.Floor = currentFloor
-				floorStop = 0
-				lastFloor.Running = false
-				log.Println("a")
-				*floor <- lastFloor
-			default:
-				if currentFloor != lastFloor.Floor {
-					lastFloor.Floor = currentFloor
-					*floor <- lastFloor
-				}
-			}
+			newFloor(currentFloor, &lastFloor, floor, &floorStop)
 		default:
+			time.Sleep(5 * time.Millisecond)
 			if floorStop == 0 {
 				break
 			}
@@ -174,3 +150,34 @@ func runElevator(floorOrder *chan uint, floor *chan FloorStatus) {
 		}
 	}
 }
+
+
+func newFloor(currentFloor uint, lastFloor *FloorStatus, floor *chan FloorStatus, floorStop *uint) {
+	switch currentFloor {
+	case 0:
+		break
+	case 1:
+		motor <- motorType{0, lastFloor.Direction}
+		lastFloor.Floor = currentFloor
+		lastFloor.Running = false
+		*floor <- *lastFloor
+	case MAXFLOOR:
+		motor <- motorType{0, lastFloor.Direction}
+		lastFloor.Floor = currentFloor
+		lastFloor.Running = false
+		*floor <- *lastFloor
+	case *floorStop:
+		motor <- motorType{0, lastFloor.Direction}
+		lastFloor.Floor = currentFloor
+		*floorStop = 0
+		lastFloor.Running = false
+		log.Println("a")
+		*floor <- *lastFloor
+	default:
+		if currentFloor != lastFloor.Floor {
+			lastFloor.Floor = currentFloor
+			*floor <- *lastFloor
+		}
+	}
+}
+
