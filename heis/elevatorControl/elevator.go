@@ -88,8 +88,6 @@ func runQueue(floorReached liftio.FloorStatus) {
 		removeFromQueue(order, direction)
 		lastOrder = 0
 		floorReached.Door = true
-		setLight <- liftio.Light{0, liftio.Door, true}
-		time.AfterFunc(3*time.Second, closeDoor)
 		time.Sleep(20 * time.Millisecond)
 		if order, _ := localQueue.GetOrder(floorReached.Floor, floorReached.Direction); order == 0 {
 			isIdle = true
@@ -103,10 +101,6 @@ func runQueue(floorReached liftio.FloorStatus) {
 	}
 }
 
-func closeDoor() {
-	log.Println("close door")
-	setLight <- liftio.Light{0, liftio.Door, false}
-}
 func removeFromQueue(floor uint, direction bool) {
 	log.Println("Removing from queue", floor, direction)
 	localQueue.DeleteLocalOrder(floor, direction)
