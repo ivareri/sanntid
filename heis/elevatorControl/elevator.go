@@ -81,10 +81,7 @@ func runQueue(floorReached liftio.FloorStatus) {
 		}
 	}
 	order, direction := localQueue.GetOrder(floor, floorReached.Direction)
-	if order == 0 {
-		return
-	}
-	if floorReached.Floor == order && !floorReached.Running {
+	if floorReached.Floor == order && floorReached.Door {
 		removeFromQueue(order, direction)
 		lastOrder = 0
 		floorReached.Door = true
