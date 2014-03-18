@@ -48,7 +48,7 @@ func setLight(lightch chan Light) {
 		Up:      3,
 		Down:    7,
 		Stop:    12,
-		Door:    13}
+		door:    13}
 	select {
 	default:
 		return
@@ -57,9 +57,6 @@ func setLight(lightch chan Light) {
 			io_set_bit(lightmap[keyType[int(light.Button)]+int(light.Floor)])
 		} else {
 			io_clear_bit(lightmap[keyType[int(light.Button)]+int(light.Floor)])
-		}
-		if light.Button == Door {
-			doorch <- light.On
 		}
 	}
 }

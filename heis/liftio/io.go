@@ -16,7 +16,7 @@ const (
 	Command
 	Stop
 	Obstruction
-	Door
+	door
 )
 
 // Floor should be ignored when Button is  Stop or Obstruction
@@ -49,7 +49,8 @@ type motorType struct {
 var (
 	floorSeen = make(chan uint, 5)
 	motor     = make(chan motorType, 5)
-	doorch 	  = make(chan bool, 5)
+	lightch	*chan Light
+	floorch *chan FloorStatus
 )
 
 // Initilazes hardware and starts IO routines
@@ -74,15 +75,17 @@ func Init(floorOrder *chan uint, light *chan Light, floor *chan FloorStatus, but
 	io_clear_bit(LIGHT_DOWN3)
 	io_clear_bit(LIGHT_DOWN4)
 	log.Println("Cleared lights. Starting go routines")
-	go runIO(button, light)
-	go runElevator(floorOrder, floor)
+	lightch = light
+	floorch = floor
+	go runIO(button)
+	go runElevator(floorOrder)
 	return true
 }
 
 // Threads writing\reading from IO might cause bugs
-func runIO(button *chan Button, light *chan Light) {
+func runIO(button *chan Button) {
 	for {
-		setLight(*light)
+		setLight(*lightch)
 		readFloorSensor()
 		runMotor()
 		readButtons(*button)
@@ -93,15 +96,14 @@ func runIO(button *chan Button, light *chan Light) {
 // Listens on floorOrder, and runs lift to given floor
 // Returns status as it arrives at any floor
 // Called from Init
-func runElevator(floorOrder *chan uint, floor *chan FloorStatus) {
+func runElevator(floorOrder *chan uint) {
 	var currentFloor, floorStop uint
-	var lastFloor FloorStatus
-	doorOpen := false
-	lastFloor.Direction = false
+	var status FloorStatus
+	status.Direction = false
 
 	// Go to closest floor downwards.
 	// Do this to get a known state
-	motor <- motorType{DEFAULTSPEED, lastFloor.Direction}
+	motor <- motorType{DEFAULTSPEED, status.Direction}
 	for {
 		currentFloor = <-floorSeen
 		if currentFloor != 0 {
@@ -109,17 +111,14 @@ func runElevator(floorOrder *chan uint, floor *chan FloorStatus) {
 			break
 		}
 	}
-	motor <- motorType{0, lastFloor.Direction}
-	lastFloor.Floor = currentFloor
-	lastFloor.Running = false
-	*floor <- lastFloor
+	motor <- motorType{0, status.Direction}
+	status.Floor = currentFloor
+	status.Running = false
+	*floorch <- status
 
 	// Elevator should be in known state. Starting loop
 	for {
 		select {
-		case doorOpen = <-doorch:
-			lastFloor.Door = doorOpen
-			*floor <- lastFloor
 		case newFloorStop := <-*floorOrder:
 			if newFloorStop < 1 || newFloorStop > MAXFLOOR {
 				log.Println("FloorOrder out of range:", newFloorStop)
@@ -127,57 +126,58 @@ func runElevator(floorOrder *chan uint, floor *chan FloorStatus) {
 				floorStop = newFloorStop
 			}
 		case currentFloor = <-floorSeen:
-			newFloor(currentFloor, &lastFloor, floor, &floorStop)
+			newFloor(currentFloor, &status, &floorStop)
 		default:
 			time.Sleep(5 * time.Millisecond)
 			if floorStop == 0 {
 				break
 			}
-			if floorStop < lastFloor.Floor {
-				lastFloor.Direction = false
+			if floorStop < status.Floor {
+				status.Direction = false
 			} else {
-				lastFloor.Direction = true
+				status.Direction = true
 			}
-			if lastFloor.Floor == floorStop {
-				*floor <- lastFloor
+			if status.Floor == floorStop {
+				*floorch <- status
 				floorStop = 0
-			} else if !doorOpen && !lastFloor.Running {
-				motor <- motorType{DEFAULTSPEED, lastFloor.Direction}
-				lastFloor.Floor = currentFloor
-				lastFloor.Running = true
-				*floor <- lastFloor
+			} else if !status.Door && !status.Running {
+				motor <- motorType{DEFAULTSPEED, status.Direction}
+				status.Floor = currentFloor
+				status.Running = true
+				*floorch <- status
 			}
 		}
 	}
 }
 
 
-func newFloor(currentFloor uint, lastFloor *FloorStatus, floor *chan FloorStatus, floorStop *uint) {
+func newFloor(currentFloor uint, status *FloorStatus, floorStop *uint) {
 	switch currentFloor {
 	case 0:
 		break
-	case 1:
-		motor <- motorType{0, lastFloor.Direction}
-		lastFloor.Floor = currentFloor
-		lastFloor.Running = false
-		*floor <- *lastFloor
-	case MAXFLOOR:
-		motor <- motorType{0, lastFloor.Direction}
-		lastFloor.Floor = currentFloor
-		lastFloor.Running = false
-		*floor <- *lastFloor
 	case *floorStop:
-		motor <- motorType{0, lastFloor.Direction}
-		lastFloor.Floor = currentFloor
+		motor <- motorType{0, status.Direction}
+		status.Floor = currentFloor
+		status.Running = false
+		status.Door = true
+		*lightch <-Light{0, door, true}
 		*floorStop = 0
-		lastFloor.Running = false
 		log.Println("a")
-		*floor <- *lastFloor
+		*floorch <- *status
+	case 1:
+		motor <- motorType{0, status.Direction}
+		status.Floor = currentFloor
+		status.Running = false
+		*floorch <- *status
+	case MAXFLOOR:
+		motor <- motorType{0, status.Direction}
+		status.Floor = currentFloor
+		status.Running = false
+		*floorch <- *status
 	default:
-		if currentFloor != lastFloor.Floor {
-			lastFloor.Floor = currentFloor
-			*floor <- *lastFloor
+		if currentFloor != status.Floor {
+			status.Floor = currentFloor
+			*floorch <- *status
 		}
 	}
 }
-
