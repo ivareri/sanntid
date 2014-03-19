@@ -10,7 +10,7 @@ import (
 
 var quit = make(chan bool)
 
-// Sets up mulitcast and returns and ID from ip
+// Returns lift's unique ID
 func NetInit(send *chan Message, recv *chan Message) int {
 	addr, iface, err := FindIP()
 	if err != nil {

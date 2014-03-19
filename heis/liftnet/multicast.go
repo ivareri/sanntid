@@ -15,7 +15,7 @@ const (
 	Done
 )
 
-// Used for communication between lifts
+// Communication messages between lifts
 type Message struct {
 	LiftId        int
 	Floor     uint
@@ -27,7 +27,6 @@ type Message struct {
 
 const multicastaddr = "239.0.0.148:49153"
 
-// Sets up network sender and reciver
 func MulticastInit(send *chan Message, recieved *chan Message, iface *net.Interface) {
 	group, err := net.ResolveUDPAddr("udp", multicastaddr)
 	if err != nil {

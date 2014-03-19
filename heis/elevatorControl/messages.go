@@ -49,6 +49,7 @@ func delMessage(floor uint, direction bool) {
 	}
 }
 
+// Called by RunElevator
 func newMessage(message liftnet.Message) {
 	log.Println("Recv new message", message)
 	key := generateKey(message.Floor, message.Direction)
@@ -97,6 +98,7 @@ func newMessage(message liftnet.Message) {
 	}
 }
 
+// Called by Run Elevator
 func checkTimeout() {
 	newTimeout := time.Duration(newTimeoutBase + (myID%10)*10)
 	acceptedTimeout := time.Duration(acceptedTimeoutBase + (myID / 10))
@@ -129,7 +131,7 @@ func checkTimeout() {
 	}
 }
 
-//called form checktimout
+// Called by checkTimeout
 func newOrderTimeout(key, critical uint) {
 	switch critical {
 	case 3:
@@ -147,7 +149,7 @@ func newOrderTimeout(key, critical uint) {
 	}
 }
 
-//called from checkTimout
+// Called by checkTimeout
 func acceptedOrderTimeout(key uint, critical uint) {
 	log.Println("Some elevator didn't do as promised")
 	switch critical {
@@ -158,13 +160,14 @@ func acceptedOrderTimeout(key uint, critical uint) {
 		takeOrder(key)
 	case 1:
 		// TODO: isIdle not working??
+		log.Println("Idle", isIdle)
 		if isIdle {
 			takeOrder(key)
 		}
 	}
 }
 
-// called from timeouts
+// Called by timeout functions
 func takeOrder(key uint) {
 	log.Println("Accepted order", globalQueue[key])
 	msg := globalQueue[key] // TODO: Make pretty
@@ -176,21 +179,20 @@ func takeOrder(key uint) {
 	toNetwork <- globalQueue[key]
 }
 
+// Called by NewMessage, addMessage and newOrderTimeout
 // Nearest Car algorithm, returns Figure of Suitability
-// Lift with largest FS should accept the request
 func figureOfSuitability(reqFlr uint, reqDir bool) int {
-	MAXFLOOR := 4 // TODO: make pretty
 	statFlr := liftStatus.Floor
 	statDir := liftStatus.Direction
 	if reqDir == statDir {
 		// lift moving towards the requested floor and the request is in the same direction
 		if (statDir && reqFlr > statFlr) || (!statDir && reqFlr < statFlr) {
-			return MAXFLOOR + 1 - diff(reqFlr, statFlr)
+			return maxFloor + 1 - diff(reqFlr, statFlr)
 		}
 	} else {
 		// lift moving towards the requested floor, but the request is in oposite direction
 		if (statDir && reqFlr > statFlr) || (!statDir && reqFlr < statFlr) {
-			return MAXFLOOR - diff(reqFlr, statFlr)
+			return maxFloor - diff(reqFlr, statFlr)
 		} else {
 			return 1
 		}

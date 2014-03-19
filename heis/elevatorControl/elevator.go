@@ -18,7 +18,7 @@ var fromNetwork = make(chan liftnet.Message, 10)
 var floorOrder = make(chan uint, 5) // floor orders to io
 var setLight = make(chan liftio.Light, 5)
 var liftStatus liftio.LiftStatus
-
+var maxFloor = liftio.MAXFLOOR
 
 func RunElevator() {
 
