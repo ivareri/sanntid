@@ -26,11 +26,11 @@ func generateKey(floor uint, direction bool) uint {
 func addMessage(floor uint, direction bool) {
 	key := generateKey(floor, direction)
 	message := liftnet.Message{
-		LiftId:        myID,
+		LiftId:    myID,
 		Floor:     floor,
 		Direction: direction,
 		Status:    liftnet.New,
-		Weigth:	figureOfSuitability(floor, direction),
+		Weigth:    figureOfSuitability(floor, direction),
 		TimeRecv:  time.Now()}
 
 	if _, ok := globalQueue[key]; ok {
@@ -64,7 +64,7 @@ func newMessage(message liftnet.Message) {
 		case liftnet.Accepted:
 			globalQueue[key] = message
 		case liftnet.New:
-			if  val.Weigth <=  message.Weigth {
+			if val.Weigth <= message.Weigth {
 				globalQueue[key] = message
 			}
 		default:
@@ -76,7 +76,7 @@ func newMessage(message liftnet.Message) {
 			// Promptly ignore?
 		case liftnet.Accepted:
 			log.Println("Old message acceppted by lift: ", message.LiftId)
-				// Might be wise to recalculate and find better lift
+			// Might be wise to recalculate and find better lift
 			globalQueue[key] = message
 		case liftnet.New:
 			fs := figureOfSuitability(message.Floor, message.Direction)
@@ -119,7 +119,7 @@ func checkTimeout() {
 			} else if timediff > ((2 * acceptedTimeout) * time.Second) {
 				acceptedOrderTimeout(key, 1)
 			}
-		}else if val.Status == liftnet.Accepted && val.LiftId == myID {
+		} else if val.Status == liftnet.Accepted && val.LiftId == myID {
 			timediff := time.Now().Sub(val.TimeRecv)
 			if timediff > (acceptedTimeout * time.Second) {
 				val.Weigth = figureOfSuitability(val.Floor, val.Direction)

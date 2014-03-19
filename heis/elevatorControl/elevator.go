@@ -5,8 +5,8 @@ import (
 	"../liftnet"
 	"../localQueue"
 	"log"
-	"time"
 	"math/rand"
+	"time"
 )
 
 var myID int
@@ -23,7 +23,7 @@ var maxFloor = liftio.MAXFLOOR
 func RunElevator() {
 
 	buttonPress := make(chan liftio.Button, 5) // button presses from io
-	status := make(chan liftio.LiftStatus, 5) // the lifts status
+	status := make(chan liftio.LiftStatus, 5)  // the lifts status
 	rand.Seed(time.Now().Unix())
 	myPenalty = rand.Intn(100)
 	myID = liftnet.NetInit(&toNetwork, &fromNetwork)
@@ -50,7 +50,7 @@ func RunElevator() {
 	}
 }
 
-// Called byLiftStatus RunElevator 
+// Called byLiftStatus RunElevator
 func newKeypress(button liftio.Button) {
 	switch button.Button {
 	case liftio.Up:
@@ -111,7 +111,7 @@ func removeFromQueue(floor uint, direction bool) {
 
 }
 
-// Called by RunElevator 
+// Called by RunElevator
 func orderLight(message liftnet.Message) {
 	switch message.Status {
 	case liftnet.Done:
