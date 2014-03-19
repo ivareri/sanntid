@@ -20,7 +20,7 @@ const (
 )
 
 // Used for passing around keypresses
-// Floor isLiftStatus ignored when Button is Stop or Obstruction
+// Floor is ignored when Button is Stop or Obstruction
 type Button struct {
 	Floor  uint
 	Button ButtonType
