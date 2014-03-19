@@ -1,16 +1,16 @@
-package elevatorControl
+package liftControl
 
 import (
 	"../liftio"
 	"../liftnet"
 	"../localQueue"
+	"encoding/json"
 	"log"
-	"math/rand"
+	"os"
 	"time"
 )
 
 var myID int
-var myPenalty int
 var isIdle = true
 var lastOrder = uint(0)
 var toNetwork = make(chan liftnet.Message, 10)
@@ -20,37 +20,36 @@ var setLight = make(chan liftio.Light, 5)
 var liftStatus liftio.LiftStatus
 var maxFloor = liftio.MAXFLOOR
 
-func RunElevator() {
+func RunLift() {
 
 	buttonPress := make(chan liftio.Button, 5) // button presses from io
-	status := make(chan liftio.LiftStatus, 5)  // the lifts status
-	rand.Seed(time.Now().Unix())
-	myPenalty = rand.Intn(100)
+	status := make(chan liftio.LiftStatus, 5) // the lifts status
+
 	myID = liftnet.NetInit(&toNetwork, &fromNetwork)
 	liftio.IOInit(&floorOrder, &setLight, &status, &buttonPress)
-	restoreBackup()
-	liftStatus = <-status
+	readQueueFromFile() // if no prev queue: "queue.txt doesn't exitst" entered in log
+	liftStatus := <-status
 	ticker1 := time.NewTicker(10 * time.Millisecond).C
 	ticker2 := time.NewTicker(5 * time.Millisecond).C
-	log.Println("Up and running. My is is: ", myID, "Penalty time is: ", myPenalty)
+	log.Println("Up and running. My is is: ", myID, "Penalty time is: ", (myID%10)*10)
 	for {
 		select {
 		case button := <-buttonPress:
 			newKeypress(button)
 		case liftStatus = <-status:
-			runQueue()
+			runQueue(liftStatus)
 		case message := <-fromNetwork:
 			newMessage(message)
 			orderLight(message)
 		case <-ticker1:
 			checkTimeout()
 		case <-ticker2:
-			runQueue()
+			runQueue(liftStatus)
 		}
 	}
 }
 
-// Called byLiftStatus RunElevator
+// Called byLiftStatus RunLift 
 func newKeypress(button liftio.Button) {
 	switch button.Button {
 	case liftio.Up:
@@ -74,8 +73,8 @@ func newKeypress(button liftio.Button) {
 
 }
 
-// Called by RunElevator
-func runQueue() {
+// Called by RunLift
+func runQueue(liftStatus liftio.LiftStatus) {
 	floor := liftStatus.Floor
 	if liftStatus.Running {
 		if liftStatus.Direction {
@@ -90,9 +89,10 @@ func runQueue() {
 		lastOrder = 0
 		liftStatus.Door = true
 		time.Sleep(20 * time.Millisecond)
-	} else if order == 0 && !liftStatus.Door {
-		isIdle = true
-	} else if order != 0 {
+		if order, _ := localQueue.GetOrder(liftStatus.Floor, liftStatus.Direction); order == 0 {
+			isIdle = true
+		}
+	} else {
 		isIdle = false
 		if lastOrder != order && !liftStatus.Door {
 			lastOrder = order
@@ -111,7 +111,7 @@ func removeFromQueue(floor uint, direction bool) {
 
 }
 
-// Called by RunElevator
+// Called by RunLift 
 func orderLight(message liftnet.Message) {
 	switch message.Status {
 	case liftnet.Done:
@@ -132,15 +132,32 @@ func setOrderLight(floor uint, direction bool, on bool) {
 	}
 }
 
-// Called by RunElevator and ReadQueuFromFile
+// Called by RunLift and ReadQueuFromFile
 func addCommand(floor uint) {
 	localQueue.AddLocalCommand(floor)
 	setLight <- liftio.Light{floor, liftio.Command, true}
 }
 
-// Called by RunElevator
-func restoreBackup() {
-	for i, val := range localQueue.ReadQueueFromFile() {
+// Called by RunLift
+func readQueueFromFile() {
+	input, err := os.Open(localQueue.BackupFile)
+	if err != nil {
+		log.Println("Error in opening file: ", err)
+		return
+	}
+	defer input.Close()
+	byt := make([]byte, 23)
+	dat, err := input.Read(byt)
+	if err != nil {
+		log.Println("Error in reading file: ", err)
+		return
+	}
+	log.Println("Read ", dat, " bytes from file ")
+	var cmd []bool
+	if err := json.Unmarshal(byt, &cmd); err != nil {
+		log.Println(err)
+	}
+	for i, val := range cmd {
 		if val {
 			addCommand(uint(i + 1))
 		}

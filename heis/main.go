@@ -1,9 +1,9 @@
 package main
 
 import (
-	"./elevatorControl"
+	"./liftControl"
 )
 
 func main() {
-	elevatorControl.RunElevator()
+	liftControl.RunLift()
 }
