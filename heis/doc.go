@@ -13,9 +13,9 @@
 //
 //
 // Queue Priority:
-// -- Relaclucate FS and check if order should be moved to other lifts.
-// -- Need new status field to transmitt over network.
-// -- Need abillity to remove order from localQueue.
+// -- Recalucate FS and check if order should be moved to other lifts.
+// X -- Need new status field to transmitt over network.
+// X -- Need abillity to remove order(request?) from localQueue.
 //(localQueue.DeleteLocalOrder deletes commands, so not that one)
 //
 //

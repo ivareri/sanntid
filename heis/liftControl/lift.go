@@ -86,7 +86,7 @@ func runQueue() {
 	}
 	order, direction := localQueue.GetOrder(floor, liftStatus.Direction)
 	if liftStatus.Floor == order && liftStatus.Door {
-		removeFromQueue(order, direction)
+		removeFromQueue(order, direction) 
 		lastOrder = 0
 		liftStatus.Door = true
 		time.Sleep(20 * time.Millisecond)
