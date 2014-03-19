@@ -133,13 +133,15 @@ func runElevator(floorOrder *chan uint) {
 		default:
 			time.Sleep(5 * time.Millisecond)
 			if stopFloor != 0 {
-				insertCreativeAndLogicalNameHere(currentFloor, &status, &stopFloor)
+				stopAtFloor(currentFloor, &status, &stopFloor)
+				goToFloor(currentFloor, &status, &stopFloor)
+			}
 			}
 		}
 	}
 }
 
-func insertCreativeAndLogicalNameHere(currentFloor uint, status *FloorStatus, stopFloor *uint) {
+func stopAtFloor(currentFloor uint, status *FloorStatus, stopFloor *uint) {
 	if status.Floor == *stopFloor {
 		motor <- motorType{0, status.Direction}
 		status.Floor = currentFloor
@@ -153,6 +155,9 @@ func insertCreativeAndLogicalNameHere(currentFloor uint, status *FloorStatus, st
 		*stopFloor = 0
 		*floorch <- *status
 	}
+}
+
+func goToFloor(currentFloor uint, status *FloorStatus, stopFloor *uint) {
 	if !status.Door && !status.Running {
 		status.Direction = status.Floor < *stopFloor
 		motor <- motorType{DEFAULTSPEED, status.Direction}
