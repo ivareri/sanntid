@@ -160,8 +160,6 @@ func acceptedOrderTimeout(key uint, critical uint) {
 	case 2:
 		takeOrder(key)
 	case 1:
-		// TODO: isIdle not working??
-		log.Println("Idle", isIdle)
 		if isIdle {
 			takeOrder(key)
 		}
