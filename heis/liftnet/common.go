@@ -10,6 +10,7 @@ import (
 
 var quit = make(chan bool)
 
+// Called by RunElevator
 // Returns lift's unique ID
 func NetInit(send *chan Message, recv *chan Message) int {
 	addr, iface, err := FindIP()
@@ -21,7 +22,8 @@ func NetInit(send *chan Message, recv *chan Message) int {
 	return FindID(addr)
 }
 
-//Returns IPv4 address for lift
+// Called by NetInit
+// Returns IPv4 address for lift
 func FindIP() (string, *net.Interface, error) {
 	ifaces, err := net.Interfaces()
 	if err != nil {
@@ -38,7 +40,7 @@ func FindIP() (string, *net.Interface, error) {
 	return "", nil, errors.New("Unable to find IPv4 address")
 }
 
-
+// Called by NetInit
 // Returns 3 last digits from IPv4 address
 func FindID(a string) int {
 	log.Println(a)
