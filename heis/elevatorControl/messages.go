@@ -8,7 +8,7 @@ import (
 )
 
 const acceptedTimeoutBase = 3
-const newTimeoutBase = 50
+const newTimeoutBase = 500
 
 var globalQueue = make(map[uint]liftnet.Message)
 
@@ -25,23 +25,20 @@ func generateKey(floor uint, direction bool) uint {
 func addMessage(floor uint, direction bool) {
 	key := generateKey(floor, direction)
 	message := liftnet.Message{
-		Id:        myID,
+		LiftId:        myID,
 		Floor:     floor,
 		Direction: direction,
 		Status:    liftnet.New,
-		TimeSent:  time.Now(),
+		Weigth:	figureOfSuitability(floor, direction),
 		TimeRecv:  time.Now()}
 
 	if _, ok := globalQueue[key]; ok {
 		log.Println("Order already in queue")
 		return
-	} else if isIdle {
-		message.Status = liftnet.Accepted
-		localQueue.AddLocalRequest(floor, direction)
 	}
 	globalQueue[key] = message
-	orderLight(message)
 	toNetwork <- message
+	log.Println("Sent message, ", message)
 }
 func delMessage(floor uint, direction bool) {
 	key := generateKey(floor, direction)
@@ -53,13 +50,10 @@ func delMessage(floor uint, direction bool) {
 }
 
 func newMessage(message liftnet.Message) {
+	log.Println("Recv new message", message)
 	key := generateKey(message.Floor, message.Direction)
-	if val, ok := globalQueue[key]; !ok {
-		if val.Status == liftnet.Done {
-			return
-		}
-		globalQueue[key] = message
-	} else {
+	val, inQueue := globalQueue[key]
+	if inQueue {
 		switch message.Status {
 		case liftnet.Done:
 			delete(globalQueue, key)
@@ -68,12 +62,37 @@ func newMessage(message liftnet.Message) {
 				globalQueue[key] = message
 			} else {
 				log.Println("Got new accept message for already accepted order.")
-				log.Println("Check timings on elevators: ", val.Id, message.Id)
+				log.Println("Check timings on elevators: ", val.LiftId, message.LiftId)
 			}
 		case liftnet.New:
-			log.Println("Recived new order, but order already in queue")
+			if  val.Weigth <  message.Weigth {
+				globalQueue[key] = message
+			}
 		default:
-			log.Println("Unknown status recived")
+			log.Println("Unknown status recived: ", message.Status, ". Ignoring message")
+		}
+	} else {
+		switch message.Status {
+		case liftnet.Done:
+			// Promptly ignore?
+		case liftnet.Accepted:
+			log.Println("Old message acceppted by lift: ", message.LiftId)
+				// Might be wise to recalculate and find better lift
+			globalQueue[key] = message
+		case liftnet.New:
+			fs := figureOfSuitability(message.Floor, message.Direction)
+			if fs >= message.Weigth {
+				message.Weigth = fs
+				message.LiftId = myID
+				globalQueue[key] = message
+				toNetwork <- message
+				log.Println("I'm best so far", fs)
+			} else {
+				globalQueue[key] = message
+			}
+			log.Println("My fs:", fs, " best fs", message.Weigth)
+		default:
+			log.Println("Unknown status recived: ", message.Status, ". Ignoring message")
 		}
 	}
 }
@@ -96,13 +115,13 @@ func checkTimeout() {
 			}
 		} else if val.Status == liftnet.Accepted {
 			timediff := time.Now().Sub(val.TimeRecv)
-			if timediff > ((3 * acceptedTimeout) * time.Second) {
-				log.Println("3x accepted timeout")
-				acceptedOrderTimeout(key, 3)
-			} else if timediff > ((2 * acceptedTimeout) * time.Second) {
+			if timediff > ((4 * acceptedTimeout) * time.Second) {
 				log.Println("2x accepted timeout")
+				acceptedOrderTimeout(key, 3)
+			} else if timediff > ((3 * acceptedTimeout) * time.Second) {
+				log.Println("1.5x accepted timeout")
 				acceptedOrderTimeout(key, 2)
-			} else if timediff > ((1 * acceptedTimeout) * time.Second) {
+			} else if timediff > ((2 * acceptedTimeout) * time.Second) {
 				log.Println("1x accepted timeout")
 				acceptedOrderTimeout(key, 1)
 			}
@@ -118,11 +137,11 @@ func newOrderTimeout(key, critical uint) {
 	case 2:
 		if isIdle {
 			takeOrder(key)
-		} else if figureOfSuitability(globalQueue[key], true, 1) > 1 {
+		} else if figureOfSuitability(globalQueue[key].Floor, globalQueue[key].Direction) > globalQueue[key].Weigth {
 			takeOrder(key)
 		}
 	case 1:
-		if isIdle {
+		if globalQueue[key].LiftId == myID {
 			takeOrder(key)
 		}
 	}
@@ -134,9 +153,11 @@ func acceptedOrderTimeout(key uint, critical uint) {
 	switch critical {
 	case 3:
 		log.Println("Something went horribly wrong")
+		takeOrder(key)
 	case 2:
 		takeOrder(key)
 	case 1:
+		// TODO: isIdle not working??
 		if isIdle {
 			takeOrder(key)
 		}
@@ -147,7 +168,7 @@ func acceptedOrderTimeout(key uint, critical uint) {
 func takeOrder(key uint) {
 	log.Println("Accepted order", globalQueue[key])
 	msg := globalQueue[key] // TODO: Make pretty
-	msg.Id = myID
+	msg.LiftId = myID
 	msg.Status = liftnet.Accepted
 	msg.TimeRecv = time.Now()
 	localQueue.AddLocalRequest(globalQueue[key].Floor, globalQueue[key].Direction)
@@ -157,10 +178,10 @@ func takeOrder(key uint) {
 
 // Nearest Car algorithm, returns Figure of Suitability
 // Lift with largest FS should accept the request
-func figureOfSuitability(request liftnet.Message, statDir bool, statFlr uint) int {
+func figureOfSuitability(reqFlr uint, reqDir bool) int {
 	MAXFLOOR := 4 // TODO: make pretty
-	reqDir := request.Direction
-	reqFlr := request.Floor
+	statFlr := liftStatus.Floor
+	statDir := liftStatus.Direction
 	if reqDir == statDir {
 		// lift moving towards the requested floor and the request is in the same direction
 		if (statDir && reqFlr > statFlr) || (!statDir && reqFlr < statFlr) {
@@ -177,6 +198,7 @@ func figureOfSuitability(request liftnet.Message, statDir bool, statFlr uint) in
 	return 0
 }
 
+// Called from figureOfSuitabillity
 func diff(a, b uint) int {
 	x := int(a)
 	y := int(b)
