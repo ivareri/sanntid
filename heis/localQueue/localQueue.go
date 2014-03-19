@@ -28,18 +28,19 @@ func writeQueueToFile() {
 		log.Println("Error wirting to file", err)
 	}
 }
+
 // Called by restoreBackup
 // Returns bool struct with commands saved before shutdown
 func ReadQueueFromFile() []bool {
-        byt, err := ioutil.ReadFile(backupFile)
+	byt, err := ioutil.ReadFile(backupFile)
 	if err != nil {
 		log.Println("Error reading from backupfile", err)
 	}
 	var cmd []bool
-        if err := json.Unmarshal(byt, &cmd); err != nil {
-                log.Println("Error during unmarshal: ", err)
-                log.Println("Got: ", cmd)
-        }
+	if err := json.Unmarshal(byt, &cmd); err != nil {
+		log.Println("Error during unmarshal: ", err)
+		log.Println("Got: ", cmd)
+	}
 	return cmd
 }
 
@@ -74,7 +75,7 @@ func DeleteLocalOrder(floor uint, Direction bool) {
 
 // Called by elevatorControl
 // Returns next floor ordered from localQueue, 0 if empty
-// and bool indicating that order is above/below currentFloor 
+// and bool indicating that order is above/below currentFloor
 func GetOrder(currentFloor uint, direction bool) (uint, bool) {
 	if direction {
 		if nextStop := checkUp(currentFloor, 4); nextStop > 0 {

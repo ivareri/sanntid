@@ -17,11 +17,11 @@ const (
 
 // Communication messages between lifts
 type Message struct {
-	LiftId        int
+	LiftId    int
 	Floor     uint
 	Direction bool
 	Status    Orderstatus
-	Weigth	  int
+	Weigth    int
 	TimeRecv  time.Time
 }
 
@@ -47,6 +47,7 @@ func MulticastInit(send *chan Message, recieved *chan Message, iface *net.Interf
 	go multicastSend(*send, conn, group)
 	<-quit
 }
+
 // Called by MulticastInit
 func multicastSend(send chan Message, conn *net.UDPConn, addr *net.UDPAddr) {
 	for {
@@ -62,6 +63,7 @@ func multicastSend(send chan Message, conn *net.UDPConn, addr *net.UDPAddr) {
 		}
 	}
 }
+
 // Called by MulticastInit
 func multicastRead(recieved chan Message, conn *net.UDPConn) {
 	for {
