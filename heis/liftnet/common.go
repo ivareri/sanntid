@@ -11,7 +11,7 @@ import (
 var quit = make(chan bool)
 
 // Sets up mulitcast and returns and ID from ip
-func Init(send *chan Message, recv *chan Message) int {
+func NetInit(send *chan Message, recv *chan Message) int {
 	addr, iface, err := FindIP()
 	if err != nil {
 		log.Fatal("Error finding interface", err)
@@ -38,8 +38,8 @@ func FindIP() (string, *net.Interface, error) {
 	return "", nil, errors.New("Unable to find IPv4 address")
 }
 
-//converts IPv4 address to ID string.
-// 3 last digits from IPv4 address
+
+// Returns 3 last digits from IPv4 address
 func FindID(a string) int {
 	log.Println(a)
 	id, err := strconv.Atoi(strings.Split(a, ".")[3][:3])
