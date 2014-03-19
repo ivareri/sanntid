@@ -19,8 +19,8 @@ const (
 	door // Not an actual button. Used for door light only, hence not exported
 )
 
-// Floor isLiftStatus ignored when Button is  Stop or Obstruction
 // Used for passing around keypresses
+// Floor isLiftStatus ignored when Button is Stop or Obstruction
 type Button struct {
 	Floor  uint
 	Button ButtonType
@@ -33,7 +33,6 @@ type Light struct {
 	On     bool
 }
 
-// Running is false when lift is stationary
 type LiftStatus struct {
 	Running   bool
 	Floor     uint
@@ -54,6 +53,7 @@ var (
 	doorTimer = make(chan bool, 2)
 )
 
+// Called by Run Elevator
 // Initilazes hardware and starts IO routines
 // Do not write or read to any channels untill this function returns true
 func IOInit(floorOrder *chan uint, light *chan Light, floor *chan LiftStatus, button *chan Button) bool {
@@ -61,7 +61,7 @@ func IOInit(floorOrder *chan uint, light *chan Light, floor *chan LiftStatus, bu
 	if !io_init() {
 		log.Fatal("Error during HW init")
 	}
-	// Stop motor and turn off all lights
+	// Stops motor and turns off all lights
 	io_write_analog(MOTOR, 0)
 	io_clear_bit(LIGHT_STOP)
 	io_clear_bit(DOOR_OPEN)
@@ -79,10 +79,11 @@ func IOInit(floorOrder *chan uint, light *chan Light, floor *chan LiftStatus, bu
 	lightch = light
 	floorch = floor
 	go runIO(button)
-	go runElevator(floorOrder)
+	go executeOrder(floorOrder)
 	return true
 }
 
+// Called by IOInit as go routine
 // Threads writing\reading from IO might cause bugs
 func runIO(button *chan Button) {
 	for {
@@ -94,16 +95,15 @@ func runIO(button *chan Button) {
 	}
 }
 
+// Called by IOInit as go routine
 // Listens on floorOrder, and runs lift to given floor
 // Returns status as it arrives at any floor
-// Called from IOInit
-func runElevator(floorOrder *chan uint) {
+func executeOrder(floorOrder *chan uint) {
 	var currentFloor, stopFloor uint
 	var status LiftStatus
 	status.Direction = false
 
-	// Go to closest floor downwards.
-	// Do this to get a known state
+	// Go to closest floor downwards to get a known state.
 	motor <- motorType{DEFAULTSPEED, status.Direction}
 	for {
 		currentFloor = <-floorSeen
@@ -117,7 +117,7 @@ func runElevator(floorOrder *chan uint) {
 	status.Running = false
 	*floorch <- status
 
-	// Elevator should be in known state. Starting loop
+	// Elevator in known state. Starting loop
 	for {
 		select {
 		case newStopFloor := <-*floorOrder:
@@ -125,7 +125,7 @@ func runElevator(floorOrder *chan uint) {
 				stopFloor = newStopFloor
 			}
 		case currentFloor = <-floorSeen:
-			newFloor(currentFloor, &status, &stopFloor)
+			updateStatus(currentFloor, &status)
 		case <-doorTimer:
 			*lightch <- Light{0, door, false}
 			status.Door = false
@@ -141,6 +141,7 @@ func runElevator(floorOrder *chan uint) {
 	}
 }
 
+// Called by executeOrder
 func stopAtFloor(currentFloor uint, status *LiftStatus, stopFloor *uint) {
 	if status.Floor == *stopFloor {
 		motor <- motorType{0, status.Direction}
@@ -157,6 +158,7 @@ func stopAtFloor(currentFloor uint, status *LiftStatus, stopFloor *uint) {
 	}
 }
 
+// Called by executeOrder
 func goToFloor(currentFloor uint, status *LiftStatus, stopFloor *uint) {
 	if !status.Door && !status.Running {
 		status.Direction = status.Floor < *stopFloor
@@ -167,6 +169,7 @@ func goToFloor(currentFloor uint, status *LiftStatus, stopFloor *uint) {
 	}
 }
 
+// Called by executeOrder
 func checkFloorRange(floor uint) bool {
 	if floor < 1 || floor > MAXFLOOR {
 		log.Println("FloorOrder out of range:", floor)
@@ -176,7 +179,8 @@ func checkFloorRange(floor uint) bool {
 	}
 }
 
-func newFloor(currentFloor uint, status *LiftStatus, stopFloor *uint) {
+// Called by executeOrder
+func updateStatus(currentFloor uint, status *LiftStatus) {
 	switch currentFloor {
 	case 0:
 		if status.Door {
