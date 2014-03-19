@@ -18,7 +18,7 @@ func NetInit(send *chan Message, recv *chan Message, quit *chan bool) int {
 		log.Fatal("Error finding interface", err)
 		return 0
 	}
-	go MulticastInit(send, recv, iface, quit)
+	go MulticastInit(send, recv, iface)
 	return FindID(addr)
 }
 
