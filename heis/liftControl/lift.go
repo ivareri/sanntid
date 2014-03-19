@@ -106,7 +106,6 @@ func runQueue() {
 
 // Called by runQueue
 func removeFromQueue(floor uint, direction bool) {
-	log.Println("Removing from queue", floor, direction)
 	localQueue.DeleteLocalOrder(floor, direction)
 	delMessage(floor, direction)
 	setLight <- liftio.Light{floor, liftio.Command, false}

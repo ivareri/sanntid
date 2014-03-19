@@ -32,12 +32,10 @@ func addMessage(floor uint, direction bool) {
 		TimeRecv:  time.Now()}
 
 	if _, ok := globalQueue[key]; ok {
-		log.Println("Order already in queue")
 		return
 	}
 	globalQueue[key] = message
 	toNetwork <- message
-	log.Println("Sent message, ", message)
 }
 
 // Called by removeFromQueue
@@ -52,7 +50,6 @@ func delMessage(floor uint, direction bool) {
 
 // Called by RunLift
 func newMessage(message liftnet.Message) {
-	log.Println("Recv new message", message)
 	key := generateKey(message.Floor, message.Direction)
 	val, inQueue := globalQueue[key]
 	if inQueue {
@@ -83,7 +80,7 @@ func newMessage(message liftnet.Message) {
 			if val.Status == liftnet.Reassign && val.ReassId == myID { 
 				localQueue.DeleteLocalRequest(message.Floor, message.Direction)
 			}
-			globalQueue[key] = message	
+			globalQueue[key] = message
 		case liftnet.Reassign:
 			fs := figureOfSuitability(message.Floor, message.Direction)
 			if fs > message.Weigth {
@@ -93,7 +90,7 @@ func newMessage(message liftnet.Message) {
 				toNetwork <- message
 				log.Println("Reassign, my fs i better now ", fs)
 			} else {
-				globalQueue[key] = message	
+				globalQueue[key] = message
 				log.Println("I'm not fast enough, My fs: ", fs, " best fs: ", message.Weigth)
 			}
 		case liftnet.New:
