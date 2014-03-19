@@ -67,7 +67,7 @@ func DeleteLocalRequest(floor uint, Direction bool){
 	if Direction{
 		localQueue.Up[floor-1] = false
 	} else {
-		localQueue.Down[floor-1] false
+		localQueue.Down[floor-1] = false
 	}
 }
 
