@@ -66,7 +66,7 @@ func newMessage(message liftnet.Message) {
 				globalQueue[key] = message
 			}
 		case liftnet.Reassign:
-			if message.ReassID != myID{
+			if message.ReassId != myID{
 				if val.Weigth <= message.Weigth {
 					globalQueue[key] = message
 				}
@@ -80,13 +80,13 @@ func newMessage(message liftnet.Message) {
 			// Promptly ignore
 		case liftnet.Accepted:
 			log.Println("Old message accepted by lift: ", message.LiftId)
-			if val.Status == liftnet.Reassign && val.ReassID == myID { 
-				DeleteLocalRequest(message.Floor, message.Direction)
+			if val.Status == liftnet.Reassign && val.ReassId == myID { 
+				localQueue.DeleteLocalRequest(message.Floor, message.Direction)
 			}
 			globalQueue[key] = message	
-		case liftnet.Reassign
+		case liftnet.Reassign:
 			fs := figureOfSuitability(message.Floor, message.Direction)
-			if fs > message.Weight {
+			if fs > message.Weigth {
 				message.Weigth = fs
 				message.LiftId = myID
 				globalQueue[key] = message
@@ -94,7 +94,7 @@ func newMessage(message liftnet.Message) {
 				log.Println("Reassign, my fs i better now ", fs)
 			} else {
 				globalQueue[key] = message	
-				log.Println("I'm not fast enough, My fs: ", fs, " best fs: ", message.weight)
+				log.Println("I'm not fast enough, My fs: ", fs, " best fs: ", message.Weigth)
 			}
 		case liftnet.New:
 			fs := figureOfSuitability(message.Floor, message.Direction)
@@ -216,8 +216,8 @@ func reassignOrder(key uint){
 	} else {
 		log.Println("Reassigning order", globalQueue[key])
 		val.Status = liftnet.Reassign
-		val.ReassID = myID
-		val.Weight = figureOfSuitability(val.Floor, val.Direction) //necessary to recalculate fs here?
+		val.ReassId = myID
+		val.Weigth = figureOfSuitability(val.Floor, val.Direction) //necessary to recalculate fs here?
 		val.TimeRecv = time.Now()
 		globalQueue[key] = val
 		toNetwork <- globalQueue[key]
