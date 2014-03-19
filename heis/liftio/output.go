@@ -5,6 +5,23 @@ import (
 	"time"
 )
 
+// Called from init and on <-*quit
+func ioShutDown() {
+	io_write_analog(MOTOR, 0)
+        io_clear_bit(LIGHT_STOP)
+        io_clear_bit(DOOR_OPEN)
+        io_clear_bit(LIGHT_COMMAND1)
+        io_clear_bit(LIGHT_COMMAND2)
+        io_clear_bit(LIGHT_COMMAND3)
+        io_clear_bit(LIGHT_COMMAND4)
+        io_clear_bit(LIGHT_UP1)
+        io_clear_bit(LIGHT_UP2)
+        io_clear_bit(LIGHT_UP3)
+        io_clear_bit(LIGHT_DOWN2)
+        io_clear_bit(LIGHT_DOWN3)
+        io_clear_bit(LIGHT_DOWN4)
+}
+
 // Called from runElevator
 func runMotor() {
 	// Invert direction in order to break elevator before stopping
