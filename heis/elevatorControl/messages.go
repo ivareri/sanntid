@@ -69,7 +69,7 @@ func newMessage(message liftnet.Message) {
 				log.Println("Check timings on elevators: ", val.LiftId, message.LiftId)
 			}
 		case liftnet.New:
-			if  val.Weigth <  message.Weigth {
+			if  val.Weigth <=  message.Weigth {
 				globalQueue[key] = message
 			}
 		default:
@@ -85,7 +85,7 @@ func newMessage(message liftnet.Message) {
 			globalQueue[key] = message
 		case liftnet.New:
 			fs := figureOfSuitability(message.Floor, message.Direction)
-			if fs >= message.Weigth {
+			if fs > message.Weigth {
 				message.Weigth = fs
 				message.LiftId = myID
 				globalQueue[key] = message
@@ -141,6 +141,7 @@ func newOrderTimeout(key, critical uint) {
 		takeOrder(key)
 	case 2:
 		if isIdle {
+			log.Println("Elevator is idle, timout 2x")
 			takeOrder(key)
 		} else if figureOfSuitability(globalQueue[key].Floor, globalQueue[key].Direction) > globalQueue[key].Weigth {
 			takeOrder(key)
@@ -172,14 +173,17 @@ func acceptedOrderTimeout(key uint, critical uint) {
 
 // Called by timeout functions
 func takeOrder(key uint) {
-	log.Println("Accepted order", globalQueue[key])
-	msg := globalQueue[key] // TODO: Make pretty
-	msg.LiftId = myID
-	msg.Status = liftnet.Accepted
-	msg.TimeRecv = time.Now()
-	localQueue.AddLocalRequest(globalQueue[key].Floor, globalQueue[key].Direction)
-	globalQueue[key] = msg
-	toNetwork <- globalQueue[key]
+	if val, ok := globalQueue[key]; !ok {
+		log.Println("Trying to accept order not in queue")
+	} else {
+		log.Println("Accepted order", globalQueue[key])
+		val.LiftId = myID
+		val.Status = liftnet.Accepted
+		val.TimeRecv = time.Now()
+		localQueue.AddLocalRequest(val.Floor, val.Direction)
+		globalQueue[key] = val
+		toNetwork <- globalQueue[key]
+	}
 }
 
 // Called by NewMessage, addMessage and newOrderTimeout

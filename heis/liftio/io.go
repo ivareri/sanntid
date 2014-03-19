@@ -136,7 +136,6 @@ func executeOrder(floorOrder *chan uint) {
 				stopAtFloor(currentFloor, &status, &stopFloor)
 				goToFloor(currentFloor, &status, &stopFloor)
 			}
-			}
 		}
 	}
 }
