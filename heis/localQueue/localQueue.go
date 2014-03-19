@@ -2,8 +2,8 @@ package localQueue
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"log"
-	"os"
 )
 
 type Queue struct {
@@ -12,7 +12,7 @@ type Queue struct {
 	Command [4]bool
 }
 
-const BackupFile = "backupQueue.q"
+const backupFile = "backupQueue.q"
 
 var localQueue = Queue{}
 
@@ -23,14 +23,24 @@ func writeQueueToFile() {
 	if err != nil {
 		log.Println(err)
 	}
-	file, err := os.Create(BackupFile)
+	err = ioutil.WriteFile(backupFile, commandQueue, 0600)
 	if err != nil {
-		log.Println("Error in opening file ", err)
+		log.Println("Error wirting to file", err)
 	}
-	_, err = file.Write(commandQueue) // overwrites existing file
+}
+// Called by restoreBackup
+// Returns bool struct with commands saved before shutdown
+func ReadQueueFromFile() []bool {
+        byt, err := ioutil.ReadFile(backupFile)
 	if err != nil {
-		log.Println("Error in writing to file ", err)
+		log.Println("Error reading from backupfile", err)
 	}
+	var cmd []bool
+        if err := json.Unmarshal(byt, &cmd); err != nil {
+                log.Println("Error during unmarshal: ", err)
+                log.Println("Got: ", cmd)
+        }
+	return cmd
 }
 
 // Called by elevatorControl

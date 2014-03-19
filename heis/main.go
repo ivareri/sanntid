@@ -5,5 +5,5 @@ import (
 )
 
 func main() {
-	elevatorControl.Run()
+	elevatorControl.RunElevator()
 }
