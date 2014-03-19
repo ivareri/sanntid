@@ -12,7 +12,8 @@ var quit *chan bool
 
 // Called by RunElevator
 // Returns lift's unique ID
-func NetInit(send *chan Message, recv *chan Message, quit *chan bool) int {
+func NetInit(send *chan Message, recv *chan Message, quitch *chan bool) int {
+	quit = quitch
 	addr, iface, err := FindIP()
 	if err != nil {
 		log.Fatal("Error finding interface", err)
