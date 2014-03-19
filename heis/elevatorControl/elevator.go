@@ -18,8 +18,9 @@ var fromNetwork = make(chan liftnet.Message, 10)
 var floorOrder = make(chan uint, 5) // floor orders to io
 var setLight = make(chan liftio.Light, 5)
 var liftStatus liftio.FloorStatus
-// Inits and runs elevator system
-func Run() {
+
+
+func RunElevator() {
 
 	buttonPress := make(chan liftio.Button, 5) // button presses from io
 	status := make(chan liftio.FloorStatus, 5) // the lifts status
@@ -48,7 +49,7 @@ func Run() {
 	}
 }
 
-// Called from run loop
+// Called from RunElevator 
 func newKeypress(button liftio.Button) {
 	switch button.Button {
 	case liftio.Up:
@@ -72,7 +73,7 @@ func newKeypress(button liftio.Button) {
 
 }
 
-// Called from run loop
+// Called from RunElevator
 func runQueue(liftStatus liftio.FloorStatus) {
 	floor := liftStatus.Floor
 	if liftStatus.Running {
@@ -100,7 +101,7 @@ func runQueue(liftStatus liftio.FloorStatus) {
 	}
 }
 
-// called from runQueue
+// Called from runQueue
 func removeFromQueue(floor uint, direction bool) {
 	log.Println("Removing from queue", floor, direction)
 	localQueue.DeleteLocalOrder(floor, direction)
@@ -122,7 +123,7 @@ func orderLight(message liftnet.Message) {
 	}
 }
 
-// called from orderLight
+// Called from orderLight
 func setOrderLight(floor uint, direction bool, on bool) {
 	if direction {
 		setLight <- liftio.Light{floor, liftio.Up, on}
@@ -131,13 +132,13 @@ func setOrderLight(floor uint, direction bool, on bool) {
 	}
 }
 
-// called by run and ReadQueuFromFile
+// Called by RunElevator and ReadQueuFromFile
 func addCommand(floor uint) {
 	localQueue.AddLocalCommand(floor)
 	setLight <- liftio.Light{floor, liftio.Command, true}
 }
 
-// Called by run
+// Called by RunElevator
 func readQueueFromFile() {
 	input, err := os.Open(localQueue.BackupFile)
 	if err != nil {
