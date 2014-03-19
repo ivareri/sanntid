@@ -6,15 +6,15 @@ import (
 	"log"
 )
 
-type Queue struct {
-	Up      [4]bool
-	Down    [4]bool
-	Command [4]bool
+type OrderQueue struct {
+	Up      [4]bool // Requests
+	Down    [4]bool // Requests
+	Command [4]bool // Commands
 }
 
 const backupFile = "backupQueue.q"
 
-var localQueue = Queue{}
+var localQueue = OrderQueue{}
 
 // Called by elevatorControl
 // Writes localQueue.command to backup file
