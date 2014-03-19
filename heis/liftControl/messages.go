@@ -12,9 +12,6 @@ const newTimeoutBase = 500
 
 var globalQueue = make(map[uint]liftnet.Message)
 
-// TODO: Find appropriate channel size
-var timeoutch = make(chan uint, 100)
-
 func generateKey(floor uint, direction bool) uint {
 	if direction {
 		floor += 10
