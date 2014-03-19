@@ -7,14 +7,14 @@ import (
 
 var (
 	order    = make(chan uint, 5)
-	status   = make(chan liftio.FloorStatus, 10)
+	status   = make(chan liftio.LiftStatus, 10)
 	keypress = make(chan liftio.Button, 10)
 	light    = make(chan liftio.Light, 10)
 )
 
 func main() {
 
-	if !liftio.Init(&order, &light, &status, &keypress) {
+	if !liftio.IOInit(&order, &light, &status, &keypress) {
 		log.Fatal("Error starting lift")
 	}
 	log.Println("Lift started")

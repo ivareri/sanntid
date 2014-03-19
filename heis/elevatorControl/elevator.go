@@ -92,7 +92,7 @@ func runQueue(liftStatus liftio.LiftStatus) {
 		if order, _ := localQueue.GetOrder(liftStatus.Floor, liftStatus.Direction); order == 0 {
 			isIdle = true
 		}
-	} else {
+	} else if order != 0 {
 		isIdle = false
 		if lastOrder != order && !liftStatus.Door {
 			lastOrder = order
