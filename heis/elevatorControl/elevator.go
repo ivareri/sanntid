@@ -25,8 +25,8 @@ func RunElevator() {
 	buttonPress := make(chan liftio.Button, 5) // button presses from io
 	status := make(chan liftio.LiftStatus, 5) // the lifts status
 
-	myID = liftnet.Init(&toNetwork, &fromNetwork)
-	liftio.Init(&floorOrder, &setLight, &status, &buttonPress)
+	myID = liftnet.NetInit(&toNetwork, &fromNetwork)
+	liftio.IOInit(&floorOrder, &setLight, &status, &buttonPress)
 	readQueueFromFile() // if no prev queue: "queue.txt doesn't exitst" entered in log
 	liftStatus := <-status
 	ticker1 := time.NewTicker(10 * time.Millisecond).C

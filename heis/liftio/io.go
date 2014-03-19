@@ -56,7 +56,7 @@ var (
 
 // Initilazes hardware and starts IO routines
 // Do not write or read to any channels untill this function returns true
-func Init(floorOrder *chan uint, light *chan Light, floor *chan LiftStatus, button *chan Button) bool {
+func IOInit(floorOrder *chan uint, light *chan Light, floor *chan LiftStatus, button *chan Button) bool {
 	// Init hardware
 	if !io_init() {
 		log.Fatal("Error during HW init")
@@ -96,7 +96,7 @@ func runIO(button *chan Button) {
 
 // Listens on floorOrder, and runs lift to given floor
 // Returns status as it arrives at any floor
-// Called from Init
+// Called from IOInit
 func runElevator(floorOrder *chan uint) {
 	var currentFloor, stopFloor uint
 	var status LiftStatus
