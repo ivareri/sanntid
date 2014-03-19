@@ -8,17 +8,17 @@ import (
 	"strings"
 )
 
-var quit = make(chan bool)
+var quit *chan bool
 
 // Called by RunElevator
 // Returns lift's unique ID
-func NetInit(send *chan Message, recv *chan Message) int {
+func NetInit(send *chan Message, recv *chan Message, quit *chan bool) int {
 	addr, iface, err := FindIP()
 	if err != nil {
 		log.Fatal("Error finding interface", err)
 		return 0
 	}
-	go MulticastInit(send, recv, iface)
+	go MulticastInit(send, recv, iface, quit)
 	return FindID(addr)
 }
 
