@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-const acceptedTimeoutBase = 3
+const acceptedTimeoutBase = 4
 const newTimeoutBase = 500
 
 var globalQueue = make(map[uint]liftnet.Message)
@@ -62,12 +62,7 @@ func newMessage(message liftnet.Message) {
 		case liftnet.Done:
 			delete(globalQueue, key)
 		case liftnet.Accepted:
-			if val.Status != liftnet.Accepted {
-				globalQueue[key] = message
-			} else {
-				log.Println("Got new accept message for already accepted order.")
-				log.Println("Check timings on elevators: ", val.LiftId, message.LiftId)
-			}
+			globalQueue[key] = message
 		case liftnet.New:
 			if  val.Weigth <=  message.Weigth {
 				globalQueue[key] = message
@@ -103,32 +98,34 @@ func newMessage(message liftnet.Message) {
 
 // Called by Run Elevator
 func checkTimeout() {
-	newTimeout := time.Duration(newTimeoutBase + (myID%10)*10)
-	acceptedTimeout := time.Duration(acceptedTimeoutBase + (myID / 10))
+	newTimeout := time.Duration(newTimeoutBase + myPenalty)
+	acceptedTimeout := time.Duration(acceptedTimeoutBase)
 	for key, val := range globalQueue {
 		if val.Status == liftnet.New {
 			timediff := time.Now().Sub(val.TimeRecv)
 			if timediff > ((3 * newTimeout) * time.Millisecond) {
-				log.Println("3x timeout")
 				newOrderTimeout(key, 3)
 			} else if timediff > ((2 * newTimeout) * time.Millisecond) {
-				log.Println("2x timeout")
 				newOrderTimeout(key, 2)
 			} else if timediff > ((1 * newTimeout) * time.Millisecond) {
-				log.Println("1x timeout")
 				newOrderTimeout(key, 1)
 			}
-		} else if val.Status == liftnet.Accepted {
+		} else if val.Status == liftnet.Accepted && val.LiftId != myID {
 			timediff := time.Now().Sub(val.TimeRecv)
 			if timediff > ((4 * acceptedTimeout) * time.Second) {
-				log.Println("2x accepted timeout")
 				acceptedOrderTimeout(key, 3)
 			} else if timediff > ((3 * acceptedTimeout) * time.Second) {
-				log.Println("1.5x accepted timeout")
 				acceptedOrderTimeout(key, 2)
 			} else if timediff > ((2 * acceptedTimeout) * time.Second) {
-				log.Println("1x accepted timeout")
 				acceptedOrderTimeout(key, 1)
+			}
+		}else if val.Status == liftnet.Accepted && val.LiftId == myID {
+			timediff := time.Now().Sub(val.TimeRecv)
+			if timediff > (acceptedTimeout * time.Second) {
+				val.Weigth = figureOfSuitability(val.Floor, val.Direction)
+				val.TimeRecv = time.Now()
+				globalQueue[key] = val
+				toNetwork <- globalQueue[key]
 			}
 		}
 	}
@@ -191,7 +188,13 @@ func takeOrder(key uint) {
 func figureOfSuitability(reqFlr uint, reqDir bool) int {
 	statFlr := liftStatus.Floor
 	statDir := liftStatus.Direction
-	if reqDir == statDir {
+	if isIdle {
+		if reqFlr == statFlr {
+			return 6
+		} else {
+			return maxFloor + 1 - diff(reqFlr, statFlr)
+		}
+	} else if reqDir == statDir {
 		// lift moving towards the requested floor and the request is in the same direction
 		if (statDir && reqFlr > statFlr) || (!statDir && reqFlr < statFlr) {
 			return maxFloor + 1 - diff(reqFlr, statFlr)
@@ -200,11 +203,9 @@ func figureOfSuitability(reqFlr uint, reqDir bool) int {
 		// lift moving towards the requested floor, but the request is in oposite direction
 		if (statDir && reqFlr > statFlr) || (!statDir && reqFlr < statFlr) {
 			return maxFloor - diff(reqFlr, statFlr)
-		} else {
-			return 1
 		}
 	}
-	return 0
+	return 1
 }
 
 // Called by figureOfSuitabillity
