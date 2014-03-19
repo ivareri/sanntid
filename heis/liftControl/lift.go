@@ -28,7 +28,7 @@ func RunLift(quit *chan bool) {
 	rand.Seed(time.Now().Unix())
 	myPenalty = rand.Intn(100)
 	myID = liftnet.NetInit(&toNetwork, &fromNetwork, quit)
-	liftio.IOInit(&floorOrder, &setLight, &status, &buttonPress)
+	liftio.IOInit(&floorOrder, &setLight, &status, &buttonPress, quit)
 	restoreBackup()
 	liftStatus = <-status
 	ticker1 := time.NewTicker(10 * time.Millisecond).C

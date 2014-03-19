@@ -57,7 +57,8 @@ var (
 // Called by Runlift
 // Initilazes hardware and starts IO routines
 // Do not write or read to any channels untill this function returns true
-func IOInit(floorOrder *chan uint, light *chan Light, floor *chan LiftStatus, button *chan Button, quit *chan bool) bool {
+func IOInit(floorOrder *chan uint, light *chan Light, floor *chan LiftStatus, button *chan Button, quitch *chan bool) bool {
+	quit = quitch
 	// Init hardware
 	if !io_init() {
 		log.Fatal("Error during HW init")
