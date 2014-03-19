@@ -53,7 +53,7 @@ var (
 	doorTimer = make(chan bool, 2)
 )
 
-// Called by Run Elevator
+// Called by Runlift
 // Initilazes hardware and starts IO routines
 // Do not write or read to any channels untill this function returns true
 func IOInit(floorOrder *chan uint, light *chan Light, floor *chan LiftStatus, button *chan Button) bool {
@@ -117,7 +117,7 @@ func executeOrder(floorOrder *chan uint) {
 	status.Running = false
 	*floorch <- status
 
-	// Elevator in known state. Starting loop
+	// Lift in known state. Starting loop
 	for {
 		select {
 		case newStopFloor := <-*floorOrder:
@@ -183,10 +183,10 @@ func updateStatus(currentFloor uint, status *LiftStatus) {
 	switch currentFloor {
 	case 0:
 		if status.Door {
-			log.Fatal("FATAL ERROR: Elevator should not be moving. Door is open")
+			log.Fatal("FATAL ERROR: Lift should not be moving. Door is open")
 		}
 		if !status.Running {
-			log.Fatal("FATAL ERROR: Elevator should not be moving. Motor is off")
+			log.Fatal("FATAL ERROR: Lift should not be moving. Motor is off")
 		}
 		return
 	case 1, MAXFLOOR:

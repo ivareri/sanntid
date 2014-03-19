@@ -1,4 +1,4 @@
-package elevatorControl
+package liftControl
 
 import (
 	"../liftnet"
@@ -52,7 +52,7 @@ func delMessage(floor uint, direction bool) {
 	}
 }
 
-// Called by RunElevator
+// Called by RunLift
 func newMessage(message liftnet.Message) {
 	log.Println("Recv new message", message)
 	key := generateKey(message.Floor, message.Direction)
@@ -96,7 +96,7 @@ func newMessage(message liftnet.Message) {
 	}
 }
 
-// Called by Run Elevator
+// Called by RunLift
 func checkTimeout() {
 	newTimeout := time.Duration(newTimeoutBase + myPenalty)
 	acceptedTimeout := time.Duration(acceptedTimeoutBase)
@@ -138,7 +138,7 @@ func newOrderTimeout(key, critical uint) {
 		takeOrder(key)
 	case 2:
 		if isIdle {
-			log.Println("Elevator is idle, timout 2x")
+			log.Println("Lift is idle, timout 2x")
 			takeOrder(key)
 		} else if figureOfSuitability(globalQueue[key].Floor, globalQueue[key].Direction) > globalQueue[key].Weigth {
 			takeOrder(key)
@@ -152,7 +152,7 @@ func newOrderTimeout(key, critical uint) {
 
 // Called by checkTimeout
 func acceptedOrderTimeout(key uint, critical uint) {
-	log.Println("Some elevator didn't do as promised")
+	log.Println("Some lift didn't do as promised")
 	switch critical {
 	case 3:
 		log.Println("Something went horribly wrong")

@@ -16,7 +16,7 @@ const backupFile = "backupQueue.q"
 
 var localQueue = OrderQueue{}
 
-// Called by elevatorControl
+// Called by liftControl
 // Writes localQueue.command to backup file
 func writeQueueToFile() {
 	commandQueue, err := json.Marshal(localQueue.Command)
@@ -44,14 +44,14 @@ func ReadQueueFromFile() []bool {
 	return cmd
 }
 
-// Called by elevatorControl
+// Called by liftControl
 // Adds command to local Queue and writes to backup file
 func AddLocalCommand(floor uint) {
 	localQueue.Command[floor-1] = true
 	writeQueueToFile()
 }
 
-// Called by elevatorControl
+// Called by liftControl
 // Adds request to localQueue
 func AddLocalRequest(floor uint, direction bool) {
 	if direction {
@@ -61,7 +61,7 @@ func AddLocalRequest(floor uint, direction bool) {
 	}
 }
 
-// Called by elevatorControl
+// Called by liftControl
 // Deletes orders from localQueue and writes to backup file
 func DeleteLocalOrder(floor uint, Direction bool) {
 	localQueue.Command[floor-1] = false
@@ -73,7 +73,7 @@ func DeleteLocalOrder(floor uint, Direction bool) {
 	}
 }
 
-// Called by elevatorControl
+// Called by liftControl
 // Returns next floor ordered from localQueue, 0 if empty
 // and bool indicating that order is above/below currentFloor
 func GetOrder(currentFloor uint, direction bool) (uint, bool) {
