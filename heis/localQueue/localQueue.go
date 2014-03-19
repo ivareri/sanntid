@@ -61,6 +61,16 @@ func AddLocalRequest(floor uint, direction bool) {
 	}
 }
 
+// TODO: Called by ...
+// Deletes requests reassigned to other lifts from localQueue
+func DeleteLocalRequest(floor uint, Direction bool){
+	if Direction{
+		localQueue.Up[floor-1] = false
+	} else {
+		localQueue.Down[floor-1] false
+	}
+}
+
 // Called by liftControl
 // Deletes orders from localQueue and writes to backup file
 func DeleteLocalOrder(floor uint, Direction bool) {
