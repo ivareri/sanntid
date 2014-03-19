@@ -51,30 +51,19 @@ var (
 	lightch   *chan Light
 	floorch   *chan LiftStatus
 	doorTimer = make(chan bool, 2)
+	quit *chan bool
 )
 
 // Called by Runlift
 // Initilazes hardware and starts IO routines
 // Do not write or read to any channels untill this function returns true
-func IOInit(floorOrder *chan uint, light *chan Light, floor *chan LiftStatus, button *chan Button) bool {
+func IOInit(floorOrder *chan uint, light *chan Light, floor *chan LiftStatus, button *chan Button, quit *chan bool) bool {
 	// Init hardware
 	if !io_init() {
 		log.Fatal("Error during HW init")
 	}
 	// Stops motor and turns off all lights
-	io_write_analog(MOTOR, 0)
-	io_clear_bit(LIGHT_STOP)
-	io_clear_bit(DOOR_OPEN)
-	io_clear_bit(LIGHT_COMMAND1)
-	io_clear_bit(LIGHT_COMMAND2)
-	io_clear_bit(LIGHT_COMMAND3)
-	io_clear_bit(LIGHT_COMMAND4)
-	io_clear_bit(LIGHT_UP1)
-	io_clear_bit(LIGHT_UP2)
-	io_clear_bit(LIGHT_UP3)
-	io_clear_bit(LIGHT_DOWN2)
-	io_clear_bit(LIGHT_DOWN3)
-	io_clear_bit(LIGHT_DOWN4)
+	ioShutDown()
 	log.Println("Cleared lights. Starting go routines")
 	lightch = light
 	floorch = floor
@@ -87,11 +76,17 @@ func IOInit(floorOrder *chan uint, light *chan Light, floor *chan LiftStatus, bu
 // Threads writing\reading from IO might cause bugs
 func runIO(button *chan Button) {
 	for {
-		setLight(*lightch)
-		readFloorSensor()
-		runMotor()
-		readButtons(*button)
-		time.Sleep(5 * time.Millisecond)
+		select {
+		case <-*quit:
+			ioShutDown()
+			return
+		default:
+			setLight(*lightch)
+			readFloorSensor()
+			runMotor()
+			readButtons(*button)
+			time.Sleep(5 * time.Millisecond)
+		}
 	}
 }
 
@@ -120,6 +115,8 @@ func executeOrder(floorOrder *chan uint) {
 	// Lift in known state. Starting loop
 	for {
 		select {
+		case <-*quit:
+			return
 		case newStopFloor := <-*floorOrder:
 			if checkFloorRange(newStopFloor) {
 				stopFloor = newStopFloor
