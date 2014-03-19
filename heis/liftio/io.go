@@ -19,7 +19,7 @@ const (
 	door // Not an actual button. Used for door light only, hence not exported
 )
 
-// Floor should be ignored when Button is  Stop or Obstruction
+// Floor isLiftStatus ignored when Button is  Stop or Obstruction
 // Used for passing around keypresses
 type Button struct {
 	Floor  uint
@@ -34,7 +34,7 @@ type Light struct {
 }
 
 // Running is false when lift is stationary
-type FloorStatus struct {
+type LiftStatus struct {
 	Running   bool
 	Floor     uint
 	Direction bool
@@ -50,13 +50,13 @@ var (
 	floorSeen = make(chan uint, 5)
 	motor     = make(chan motorType, 5)
 	lightch   *chan Light
-	floorch   *chan FloorStatus
+	floorch   *chan LiftStatus
 	doorTimer = make(chan bool, 2)
 )
 
 // Initilazes hardware and starts IO routines
 // Do not write or read to any channels untill this function returns true
-func Init(floorOrder *chan uint, light *chan Light, floor *chan FloorStatus, button *chan Button) bool {
+func Init(floorOrder *chan uint, light *chan Light, floor *chan LiftStatus, button *chan Button) bool {
 	// Init hardware
 	if !io_init() {
 		log.Fatal("Error during HW init")
@@ -99,7 +99,7 @@ func runIO(button *chan Button) {
 // Called from Init
 func runElevator(floorOrder *chan uint) {
 	var currentFloor, stopFloor uint
-	var status FloorStatus
+	var status LiftStatus
 	status.Direction = false
 
 	// Go to closest floor downwards.
@@ -141,7 +141,7 @@ func runElevator(floorOrder *chan uint) {
 	}
 }
 
-func stopAtFloor(currentFloor uint, status *FloorStatus, stopFloor *uint) {
+func stopAtFloor(currentFloor uint, status *LiftStatus, stopFloor *uint) {
 	if status.Floor == *stopFloor {
 		motor <- motorType{0, status.Direction}
 		status.Floor = currentFloor
@@ -157,7 +157,7 @@ func stopAtFloor(currentFloor uint, status *FloorStatus, stopFloor *uint) {
 	}
 }
 
-func goToFloor(currentFloor uint, status *FloorStatus, stopFloor *uint) {
+func goToFloor(currentFloor uint, status *LiftStatus, stopFloor *uint) {
 	if !status.Door && !status.Running {
 		status.Direction = status.Floor < *stopFloor
 		motor <- motorType{DEFAULTSPEED, status.Direction}
@@ -176,7 +176,7 @@ func checkFloorRange(floor uint) bool {
 	}
 }
 
-func newFloor(currentFloor uint, status *FloorStatus, stopFloor *uint) {
+func newFloor(currentFloor uint, status *LiftStatus, stopFloor *uint) {
 	switch currentFloor {
 	case 0:
 		if status.Door {

@@ -17,13 +17,13 @@ var toNetwork = make(chan liftnet.Message, 10)
 var fromNetwork = make(chan liftnet.Message, 10)
 var floorOrder = make(chan uint, 5) // floor orders to io
 var setLight = make(chan liftio.Light, 5)
-var liftStatus liftio.FloorStatus
+var liftStatus liftio.LiftStatus
 
 
 func RunElevator() {
 
 	buttonPress := make(chan liftio.Button, 5) // button presses from io
-	status := make(chan liftio.FloorStatus, 5) // the lifts status
+	status := make(chan liftio.LiftStatus, 5) // the lifts status
 
 	myID = liftnet.Init(&toNetwork, &fromNetwork)
 	liftio.Init(&floorOrder, &setLight, &status, &buttonPress)
@@ -49,7 +49,7 @@ func RunElevator() {
 	}
 }
 
-// Called from RunElevator 
+// Called byLiftStatus RunElevator 
 func newKeypress(button liftio.Button) {
 	switch button.Button {
 	case liftio.Up:
@@ -73,8 +73,8 @@ func newKeypress(button liftio.Button) {
 
 }
 
-// Called from RunElevator
-func runQueue(liftStatus liftio.FloorStatus) {
+// Called by RunElevator
+func runQueue(liftStatus liftio.LiftStatus) {
 	floor := liftStatus.Floor
 	if liftStatus.Running {
 		if liftStatus.Direction {
@@ -101,7 +101,7 @@ func runQueue(liftStatus liftio.FloorStatus) {
 	}
 }
 
-// Called from runQueue
+// Called by runQueue
 func removeFromQueue(floor uint, direction bool) {
 	log.Println("Removing from queue", floor, direction)
 	localQueue.DeleteLocalOrder(floor, direction)
@@ -111,7 +111,7 @@ func removeFromQueue(floor uint, direction bool) {
 
 }
 
-// called from run loop 
+// Called by RunElevator 
 func orderLight(message liftnet.Message) {
 	switch message.Status {
 	case liftnet.Done:
@@ -123,7 +123,7 @@ func orderLight(message liftnet.Message) {
 	}
 }
 
-// Called from orderLight
+// Called by orderLight
 func setOrderLight(floor uint, direction bool, on bool) {
 	if direction {
 		setLight <- liftio.Light{floor, liftio.Up, on}
