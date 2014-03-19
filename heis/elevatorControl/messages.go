@@ -22,6 +22,7 @@ func generateKey(floor uint, direction bool) uint {
 	return floor
 }
 
+// Called by newkeyPress
 func addMessage(floor uint, direction bool) {
 	key := generateKey(floor, direction)
 	message := liftnet.Message{
@@ -40,6 +41,8 @@ func addMessage(floor uint, direction bool) {
 	toNetwork <- message
 	log.Println("Sent message, ", message)
 }
+
+// Called by removeFromQueue
 func delMessage(floor uint, direction bool) {
 	key := generateKey(floor, direction)
 	if val, ok := globalQueue[key]; ok {
@@ -200,7 +203,7 @@ func figureOfSuitability(reqFlr uint, reqDir bool) int {
 	return 0
 }
 
-// Called from figureOfSuitabillity
+// Called by figureOfSuitabillity
 func diff(a, b uint) int {
 	x := int(a)
 	y := int(b)
