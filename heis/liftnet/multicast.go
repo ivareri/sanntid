@@ -27,9 +27,8 @@ type Message struct {
 }
 
 const multicastaddr = "239.0.0.148:49153"
-var quit *chan bool
 // Called by NetInit
-func MulticastInit(send *chan Message, recieved *chan Message, iface *net.Interface, quit *chan bool) {
+func MulticastInit(send *chan Message, recieved *chan Message, iface *net.Interface) {
 	group, err := net.ResolveUDPAddr("udp", multicastaddr)
 	if err != nil {
 		log.Println("error from ResolveUDPAddr:", err)
@@ -46,7 +45,7 @@ func MulticastInit(send *chan Message, recieved *chan Message, iface *net.Interf
 	go multicastRead(*recieved, conn)
 	log.Println("Starting sender")
 	go multicastSend(*send, conn, group)
-	<-quit
+	<-*quit
 }
 
 // Called by MulticastInit
