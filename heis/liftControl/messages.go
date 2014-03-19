@@ -9,6 +9,7 @@ import (
 
 const acceptedTimeoutBase = 4
 const newTimeoutBase = 500
+const reassignTimeoutBase = 500 
 
 var globalQueue = make(map[uint]liftnet.Message)
 
@@ -64,17 +65,33 @@ func newMessage(message liftnet.Message) {
 			if val.Weigth <= message.Weigth {
 				globalQueue[key] = message
 			}
+		case liftnet.Reassign:
+			if val.Weigth <= message.Weigth {
+				globalQueue[key] = message
+			}
+			// hvis eg har dennan i min kø og får ann id enn min og større fs, må an slettas frå local køen min?  (ikje ennå)
 		default:
 			log.Println("Unknown status recived: ", message.Status, ". Ignoring message")
 		}
 	} else {
 		switch message.Status {
 		case liftnet.Done:
-			// Promptly ignore?
+			// TODO: Promptly ignore? (write something more sensible here)
 		case liftnet.Accepted:
 			log.Println("Old message acceppted by lift: ", message.LiftId)
-			// Might be wise to recalculate and find better lift
-			globalQueue[key] = message
+			globalQueue[key] = message	
+		case liftnet.Reassign
+			fs := figureOfSuitability(message.Floor, message.Direction)
+			if fs > message.Weight {
+				message.Weigth = fs
+				message.LiftId = myID
+				globalQueue[key] = message
+				toNetwork <- message
+				log.Println("Reassign, my fs i better now ", fs)
+			} else {
+				globalQueue[key] = message	
+				log.Println("I'm still not fast enough, My fs: ", fs, " best fs: ", message.weight)
+			}
 		case liftnet.New:
 			fs := figureOfSuitability(message.Floor, message.Direction)
 			if fs > message.Weigth {
@@ -82,11 +99,11 @@ func newMessage(message liftnet.Message) {
 				message.LiftId = myID
 				globalQueue[key] = message
 				toNetwork <- message
-				log.Println("I'm best so far", fs)
+				log.Println("I'm best so far ", fs)
 			} else {
 				globalQueue[key] = message
 			}
-			log.Println("My fs:", fs, " best fs", message.Weigth)
+			log.Println("My fs:", fs, " best fs: ", message.Weigth)
 		default:
 			log.Println("Unknown status recived: ", message.Status, ". Ignoring message")
 		}
@@ -97,7 +114,9 @@ func newMessage(message liftnet.Message) {
 func checkTimeout() {
 	newTimeout := time.Duration(newTimeoutBase + myPenalty)
 	acceptedTimeout := time.Duration(acceptedTimeoutBase)
+	reassignTimeout := time.Duration(reassignTimeoutBase + myPenalty)
 	for key, val := range globalQueue {
+		// TODO : make func for all if else statements
 		if val.Status == liftnet.New {
 			timediff := time.Now().Sub(val.TimeRecv)
 			if timediff > ((3 * newTimeout) * time.Millisecond) {
@@ -121,8 +140,18 @@ func checkTimeout() {
 			if timediff > (acceptedTimeout * time.Second) {
 				val.Weigth = figureOfSuitability(val.Floor, val.Direction)
 				val.TimeRecv = time.Now()
+				val.Status = liftnet.Reassign
 				globalQueue[key] = val
 				toNetwork <- globalQueue[key]
+			}
+		} else if val.Status == liftnet.Reassign{
+			timediff := time.Now().Sub(val.TimeRecv)
+			if timediff > ((3 * reassignTimeout)* time.Millisecond){
+				newOrderTimeout(key, 3)
+			} else if timediff > ((2 * newTimeout) * time.Millisecond) {
+				newOrderTimeout(key, 2)
+			} else if timediff > ((1 * newTimeout) * time.Millisecond) {
+				newOrderTimeout(key, 1)
 			}
 		}
 	}
