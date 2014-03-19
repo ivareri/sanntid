@@ -13,6 +13,7 @@ const (
 	New Orderstatus = iota
 	Accepted
 	Done
+	Reassign
 )
 
 // Communication messages between lifts
