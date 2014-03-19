@@ -6,6 +6,8 @@ import (
 	"flag"
 	"time"
 	"os/exec"
+	"os/signal"
+	"syscall"
 	"log"
 	"net"
 	"strconv"
@@ -102,6 +104,8 @@ func netBackup(number chan int, quit chan bool) {
 func backup(count int) {
 	number := make(chan int)
 	quit := make(chan bool)
+	sigint := make(chan os.Signal, 1)
+	signal.Notify(sigint, syscall.SIGINT)
 	go netBackup(number, quit)
 	missed_packet := 0
 	var num int
@@ -112,6 +116,8 @@ loop:
 			missed_packet = 0
 			num = bla
 			time.Sleep(200 * time.Millisecond)
+		case <-sigint:
+			log.Println("Backup caught SIGINT, ignore")
 		default:
 			if missed_packet == 3 {
 				quit <- true
