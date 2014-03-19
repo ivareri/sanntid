@@ -22,6 +22,5 @@
 //
 //
 // Consitency in language
-// -- lift/elevator used multiple places.
 // -- order/request/command might not be consistent for all packages.
 package main
