@@ -1,5 +1,3 @@
-
-
 // TODO:
 //
 // main.go:
@@ -7,7 +5,7 @@
 //
 // Network:
 //
-// UDP-multicast not guaranteed delivery. 
+// UDP-multicast not guaranteed delivery.
 //
 // Possible fixes:
 // -- While not confirmed by any other elevator: save to file
@@ -17,7 +15,7 @@
 // Queue Priority:
 // -- Relaclucate FS and check if order should be moved to other lifts.
 // -- Need new status field to transmitt over network.
-// -- Need abillity to remove order from localQueue. 
+// -- Need abillity to remove order from localQueue.
 //(localQueue.DeleteLocalOrder deletes commands, so not that one)
 //
 //
