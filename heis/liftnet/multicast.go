@@ -19,6 +19,7 @@ const (
 // Communication messages between lifts
 type Message struct {
 	LiftId    int
+	ReassId	  int
 	Floor     uint
 	Direction bool
 	Status    Orderstatus

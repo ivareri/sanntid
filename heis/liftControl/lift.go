@@ -20,6 +20,7 @@ var setLight = make(chan liftio.Light, 5)
 var liftStatus liftio.LiftStatus
 var maxFloor = liftio.MAXFLOOR
 var quit *chan bool
+
 func RunLift(quit *chan bool) {
 
 	buttonPress := make(chan liftio.Button, 5) // button presses from io
@@ -88,7 +89,7 @@ func runQueue() {
 	}
 	order, direction := localQueue.GetOrder(floor, liftStatus.Direction)
 	if liftStatus.Floor == order && liftStatus.Door {
-		removeFromQueue(order, direction) 
+		removeFromQueue(order, direction)
 		lastOrder = 0
 		liftStatus.Door = true
 		time.Sleep(20 * time.Millisecond)

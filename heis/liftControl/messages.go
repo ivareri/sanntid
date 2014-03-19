@@ -66,10 +66,11 @@ func newMessage(message liftnet.Message) {
 				globalQueue[key] = message
 			}
 		case liftnet.Reassign:
-			if val.Weigth <= message.Weigth {
-				globalQueue[key] = message
+			if message.ReassID != myID{
+				if val.Weigth <= message.Weigth {
+					globalQueue[key] = message
+				}
 			}
-			// hvis eg har dennan i min kø og får ann id enn min og større fs, må an slettas frå local køen min?  (ikje ennå)
 		default:
 			log.Println("Unknown status recived: ", message.Status, ". Ignoring message")
 		}
@@ -78,7 +79,10 @@ func newMessage(message liftnet.Message) {
 		case liftnet.Done:
 			// TODO: Promptly ignore? (write something more sensible here)
 		case liftnet.Accepted:
-			log.Println("Old message acceppted by lift: ", message.LiftId)
+			log.Println("Old message accepted by lift: ", message.LiftId)
+			if val.Status == liftnet.Reassign && val.ReassID == myID { 
+				DeleteLocalRequest(message.Floor, message.Direction)
+			}
 			globalQueue[key] = message	
 		case liftnet.Reassign
 			fs := figureOfSuitability(message.Floor, message.Direction)
@@ -90,7 +94,7 @@ func newMessage(message liftnet.Message) {
 				log.Println("Reassign, my fs i better now ", fs)
 			} else {
 				globalQueue[key] = message	
-				log.Println("I'm still not fast enough, My fs: ", fs, " best fs: ", message.weight)
+				log.Println("I'm not fast enough, My fs: ", fs, " best fs: ", message.weight)
 			}
 		case liftnet.New:
 			fs := figureOfSuitability(message.Floor, message.Direction)
@@ -140,7 +144,6 @@ func checkTimeout() {
 			if timediff > (acceptedTimeout * time.Second) {
 				val.Weigth = figureOfSuitability(val.Floor, val.Direction)
 				val.TimeRecv = time.Now()
-				val.Status = liftnet.Reassign
 				globalQueue[key] = val
 				toNetwork <- globalQueue[key]
 			}
@@ -186,11 +189,10 @@ func acceptedOrderTimeout(key uint, critical uint) {
 	case 2:
 		takeOrder(key)
 	case 1:
-		if isIdle {
-			takeOrder(key)
-		}
+		reassignOrder(key)
 	}
 }
+
 
 // Called by timeout functions
 func takeOrder(key uint) {
@@ -202,6 +204,21 @@ func takeOrder(key uint) {
 		val.Status = liftnet.Accepted
 		val.TimeRecv = time.Now()
 		localQueue.AddLocalRequest(val.Floor, val.Direction)
+		globalQueue[key] = val
+		toNetwork <- globalQueue[key]
+	}
+}
+
+// TODO: should be called from somewhere suitable
+func reassignOrder(key uint){
+	if val, ok := globalQueue[key]; !ok{
+		log.Println("trying to reassign order not in queue")
+	} else {
+		log.Println("Reassigning order", globalQueue[key])
+		val.Status = liftnet.Reassign
+		val.ReassID = myID
+		val.Weight = figureOfSuitability(val.Floor, val.Direction) //necessary to recalculate fs here?
+		val.TimeRecv = time.Now()
 		globalQueue[key] = val
 		toNetwork <- globalQueue[key]
 	}
