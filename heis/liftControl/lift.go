@@ -19,14 +19,14 @@ var floorOrder = make(chan uint, 5) // floor orders to io
 var setLight = make(chan liftio.Light, 5)
 var liftStatus liftio.LiftStatus
 var maxFloor = liftio.MAXFLOOR
-
-func RunLift() {
+var quit *chan bool
+func RunLift(quit *chan bool) {
 
 	buttonPress := make(chan liftio.Button, 5) // button presses from io
 	status := make(chan liftio.LiftStatus, 5)  // the lifts status
 	rand.Seed(time.Now().Unix())
 	myPenalty = rand.Intn(100)
-	myID = liftnet.NetInit(&toNetwork, &fromNetwork)
+	myID = liftnet.NetInit(&toNetwork, &fromNetwork, quit)
 	liftio.IOInit(&floorOrder, &setLight, &status, &buttonPress)
 	restoreBackup()
 	liftStatus = <-status
@@ -46,6 +46,8 @@ func RunLift() {
 			checkTimeout()
 		case <-ticker2:
 			runQueue()
+		case <-*quit:
+			return
 		}
 	}
 }

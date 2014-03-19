@@ -27,9 +27,9 @@ type Message struct {
 }
 
 const multicastaddr = "239.0.0.148:49153"
-
+var quit *chan bool
 // Called by NetInit
-func MulticastInit(send *chan Message, recieved *chan Message, iface *net.Interface) {
+func MulticastInit(send *chan Message, recieved *chan Message, iface *net.Interface, quit *chan bool) {
 	group, err := net.ResolveUDPAddr("udp", multicastaddr)
 	if err != nil {
 		log.Println("error from ResolveUDPAddr:", err)
@@ -52,15 +52,19 @@ func MulticastInit(send *chan Message, recieved *chan Message, iface *net.Interf
 // Called by MulticastInit
 func multicastSend(send chan Message, conn *net.UDPConn, addr *net.UDPAddr) {
 	for {
-		m := <-send
-		buf, err := json.Marshal(m)
-		if err != nil {
-			log.Println("Error encoding message: ", err)
-		} else {
-			_, err := conn.WriteToUDP(buf, addr)
+		select {
+		case m := <-send:
+			buf, err := json.Marshal(m)
 			if err != nil {
-				log.Println("Error sending message", err)
+				log.Println("Error encoding message: ", err)
+			} else {
+				_, err := conn.WriteToUDP(buf, addr)
+				if err != nil {
+					log.Println("Error sending message", err)
+				}
 			}
+		case <-*quit:
+			return
 		}
 	}
 }

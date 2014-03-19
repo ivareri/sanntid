@@ -22,7 +22,7 @@ func main() {
 	log.Println("Starting elevator. Send SIGQUIT to shutdown. (CTRL+\\)")
 	cmd := spawnBackup()
 	go signaler(cmd)
-	liftControl.RunLift()
+	liftControl.RunLift(&quit)
 	log.Println("Lift shutdown")
 }
 
