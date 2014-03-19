@@ -1,8 +1,5 @@
 // TODO:
 //
-// main.go:
-// Add watchdog. Restart lift if main process dies. (As in ex6)
-//
 // Network:
 //
 // UDP-multicast not guaranteed delivery.
