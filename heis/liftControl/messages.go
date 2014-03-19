@@ -74,7 +74,7 @@ func newMessage(message liftnet.Message) {
 	} else {
 		switch message.Status {
 		case liftnet.Done:
-			// TODO: Promptly ignore? (write something more sensible here)
+			// Promptly ignore
 		case liftnet.Accepted:
 			log.Println("Old message accepted by lift: ", message.LiftId)
 			if val.Status == liftnet.Reassign && val.ReassId == myID { 
