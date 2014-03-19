@@ -17,7 +17,7 @@ var toNetwork = make(chan liftnet.Message, 10)
 var fromNetwork = make(chan liftnet.Message, 10)
 var floorOrder = make(chan uint, 5) // floor orders to io
 var setLight = make(chan liftio.Light, 5)
-
+var liftStatus liftio.FloorStatus
 // Inits and runs elevator system
 func Run() {
 
@@ -27,23 +27,23 @@ func Run() {
 	myID = liftnet.Init(&toNetwork, &fromNetwork)
 	liftio.Init(&floorOrder, &setLight, &status, &buttonPress)
 	readQueueFromFile() // if no prev queue: "queue.txt doesn't exitst" entered in log
-	floorReached := <-status
+	liftStatus := <-status
 	ticker1 := time.NewTicker(10 * time.Millisecond).C
 	ticker2 := time.NewTicker(5 * time.Millisecond).C
-	log.Println("Up and running")
+	log.Println("Up and running. My is is: ", myID, "Penalty time is: ", (myID%10)*10)
 	for {
 		select {
 		case button := <-buttonPress:
 			newKeypress(button)
-		case floorReached = <-status:
-			runQueue(floorReached)
+		case liftStatus = <-status:
+			runQueue(liftStatus)
 		case message := <-fromNetwork:
 			newMessage(message)
 			orderLight(message)
 		case <-ticker1:
 			checkTimeout()
 		case <-ticker2:
-			runQueue(floorReached)
+			runQueue(liftStatus)
 		}
 	}
 }
@@ -54,9 +54,11 @@ func newKeypress(button liftio.Button) {
 	case liftio.Up:
 		log.Println("Request up button pressed.", button.Floor)
 		addMessage(button.Floor, true)
+		setOrderLight(button.Floor, true, true)
 	case liftio.Down:
 		log.Println("Request down button ressed.", button.Floor)
 		addMessage(button.Floor, false)
+		setOrderLight(button.Floor, false, true)
 	case liftio.Command:
 		log.Println("Command button pressed.", button.Floor)
 		addCommand(button.Floor)
@@ -71,33 +73,34 @@ func newKeypress(button liftio.Button) {
 }
 
 // Called from run loop
-func runQueue(floorReached liftio.FloorStatus) {
-	floor := floorReached.Floor
-	if floorReached.Running {
-		if floorReached.Direction {
+func runQueue(liftStatus liftio.FloorStatus) {
+	floor := liftStatus.Floor
+	if liftStatus.Running {
+		if liftStatus.Direction {
 			floor++
 		} else {
 			floor--
 		}
 	}
-	order, direction := localQueue.GetOrder(floor, floorReached.Direction)
-	if floorReached.Floor == order && floorReached.Door {
+	order, direction := localQueue.GetOrder(floor, liftStatus.Direction)
+	if liftStatus.Floor == order && liftStatus.Door {
 		removeFromQueue(order, direction)
 		lastOrder = 0
-		floorReached.Door = true
+		liftStatus.Door = true
 		time.Sleep(20 * time.Millisecond)
-		if order, _ := localQueue.GetOrder(floorReached.Floor, floorReached.Direction); order == 0 {
+		if order, _ := localQueue.GetOrder(liftStatus.Floor, liftStatus.Direction); order == 0 {
 			isIdle = true
 		}
 	} else {
 		isIdle = false
-		if lastOrder != order && !floorReached.Door {
+		if lastOrder != order && !liftStatus.Door {
 			lastOrder = order
 			floorOrder <- order
 		}
 	}
 }
 
+// called from runQueue
 func removeFromQueue(floor uint, direction bool) {
 	log.Println("Removing from queue", floor, direction)
 	localQueue.DeleteLocalOrder(floor, direction)
@@ -107,7 +110,7 @@ func removeFromQueue(floor uint, direction bool) {
 
 }
 
-// called from run loop and netsomething
+// called from run loop 
 func orderLight(message liftnet.Message) {
 	switch message.Status {
 	case liftnet.Done:
