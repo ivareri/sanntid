@@ -7,9 +7,8 @@ import (
 	"time"
 )
 
-const acceptedTimeoutBase = 4
-const newTimeoutBase = 500
-const reassignTimeoutBase = 500 
+const acceptedTimeoutBase = 4 // seconds
+const newTimeoutBase = 500 // milliseconds
 
 var globalQueue = make(map[uint]liftnet.Message)
 
@@ -76,7 +75,6 @@ func newMessage(message liftnet.Message) {
 		case liftnet.Done:
 			// Promptly ignore
 		case liftnet.Accepted:
-			log.Println("Old message accepted by lift: ", message.LiftId)
 			if val.Status == liftnet.Reassign && val.ReassId == myID { 
 				localQueue.DeleteLocalRequest(message.Floor, message.Direction)
 			}
@@ -88,10 +86,9 @@ func newMessage(message liftnet.Message) {
 				message.LiftId = myID
 				globalQueue[key] = message
 				toNetwork <- message
-				log.Println("Reassign, my fs i better now ", fs)
+				log.Println("Reassign from lift ", message.ReassId, " to ", myID)
 			} else {
 				globalQueue[key] = message
-				log.Println("I'm not fast enough, My fs: ", fs, " best fs: ", message.Weigth)
 			}
 		case liftnet.New:
 			fs := figureOfSuitability(message.Floor, message.Direction)
@@ -100,11 +97,9 @@ func newMessage(message liftnet.Message) {
 				message.LiftId = myID
 				globalQueue[key] = message
 				toNetwork <- message
-				log.Println("I'm best so far ", fs)
 			} else {
 				globalQueue[key] = message
 			}
-			log.Println("My fs:", fs, " best fs: ", message.Weigth)
 		default:
 			log.Println("Unknown status recived: ", message.Status, ". Ignoring message")
 		}
@@ -115,10 +110,9 @@ func newMessage(message liftnet.Message) {
 func checkTimeout() {
 	newTimeout := time.Duration(newTimeoutBase + myPenalty)
 	acceptedTimeout := time.Duration(acceptedTimeoutBase)
-	reassignTimeout := time.Duration(reassignTimeoutBase + myPenalty)
 	for key, val := range globalQueue {
 		// TODO : make func for all if else statements
-		if val.Status == liftnet.New {
+		if val.Status == liftnet.New || val.Status == liftnet.Reassign {
 			timediff := time.Now().Sub(val.TimeRecv)
 			if timediff > ((3 * newTimeout) * time.Millisecond) {
 				newOrderTimeout(key, 3)
@@ -144,15 +138,6 @@ func checkTimeout() {
 				globalQueue[key] = val
 				toNetwork <- globalQueue[key]
 			}
-		} else if val.Status == liftnet.Reassign{
-			timediff := time.Now().Sub(val.TimeRecv)
-			if timediff > ((3 * reassignTimeout)* time.Millisecond){
-				newOrderTimeout(key, 3)
-			} else if timediff > ((2 * newTimeout) * time.Millisecond) {
-				newOrderTimeout(key, 2)
-			} else if timediff > ((1 * newTimeout) * time.Millisecond) {
-				newOrderTimeout(key, 1)
-			}
 		}
 	}
 }
@@ -164,7 +149,6 @@ func newOrderTimeout(key, critical uint) {
 		takeOrder(key)
 	case 2:
 		if isIdle {
-			log.Println("Lift is idle, timout 2x")
 			takeOrder(key)
 		} else if figureOfSuitability(globalQueue[key].Floor, globalQueue[key].Direction) > globalQueue[key].Weigth {
 			takeOrder(key)
@@ -178,10 +162,9 @@ func newOrderTimeout(key, critical uint) {
 
 // Called by checkTimeout
 func acceptedOrderTimeout(key uint, critical uint) {
-	log.Println("Some lift didn't do as promised")
 	switch critical {
 	case 3:
-		log.Println("Something went horribly wrong")
+		log.Println("ERROR: Reasigning of orders failed at some point. Fallback")
 		takeOrder(key)
 	case 2:
 		takeOrder(key)
@@ -206,22 +189,22 @@ func takeOrder(key uint) {
 	}
 }
 
-// TODO: should be called from somewhere suitable
+// Called by acceptedOrderTimeout
 func reassignOrder(key uint){
 	if val, ok := globalQueue[key]; !ok{
-		log.Println("trying to reassign order not in queue")
+		log.Println("tTrying to reassign order not in queue")
 	} else {
 		log.Println("Reassigning order", globalQueue[key])
 		val.Status = liftnet.Reassign
 		val.ReassId = myID
-		val.Weigth = figureOfSuitability(val.Floor, val.Direction) //necessary to recalculate fs here?
+		val.Weigth = figureOfSuitability(val.Floor, val.Direction)
 		val.TimeRecv = time.Now()
 		globalQueue[key] = val
 		toNetwork <- globalQueue[key]
 	}
 }
 
-// Called by NewMessage, addMessage and newOrderTimeout
+// Called by NewMessage, addMessage, reassignOrder and newOrderTimeout
 // Nearest Car algorithm, returns Figure of Suitability
 func figureOfSuitability(reqFlr uint, reqDir bool) int {
 	statFlr := liftStatus.Floor

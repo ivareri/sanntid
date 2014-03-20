@@ -43,7 +43,6 @@ func runMotor() {
 }
 
 // Sets order\command lights
-// TODO: ugly beast. Should be a cleaner way of doing this
 func setLight(lightch chan Light) {
 	lightmap := []int{
 		LIGHT_COMMAND1,
@@ -81,7 +80,7 @@ func setLight(lightch chan Light) {
 // Called from readFloorSensor
 func setFloorLight(floor int) {
 	if (floor < 1) || (floor > 4) {
-		log.Fatal("Floor out of range: ", floor)
+		log.Fatal("Floororder out of range: ", floor)
 	}
 	switch floor {
 	case 1:

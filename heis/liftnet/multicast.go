@@ -42,10 +42,9 @@ func MulticastInit(send *chan Message, recieved *chan Message, iface *net.Interf
 		return
 	}
 	defer conn.Close()
-	log.Println("Starting reader")
 	go multicastRead(*recieved, conn)
-	log.Println("Starting sender")
 	go multicastSend(*send, conn, group)
+	log.Println("Network running")
 	<-*quit
 }
 
@@ -56,11 +55,11 @@ func multicastSend(send chan Message, conn *net.UDPConn, addr *net.UDPAddr) {
 		case m := <-send:
 			buf, err := json.Marshal(m)
 			if err != nil {
-				log.Println("Error encoding message: ", err)
+				log.Println("JSON encoding: ", err)
 			} else {
 				_, err := conn.WriteToUDP(buf, addr)
 				if err != nil {
-					log.Println("Error sending message", err)
+					log.Println("NET: ", err)
 				}
 			}
 		case <-*quit:
@@ -75,12 +74,12 @@ func multicastRead(recieved chan Message, conn *net.UDPConn) {
 		buf := make([]byte, 512)
 		l, _, err := conn.ReadFrom(buf)
 		if err != nil {
-			log.Println("error from ReadFrom:", err)
+			log.Println("NET:", err)
 		}
 		var m Message
-		er := json.Unmarshal(buf[:l], &m)
-		if er != nil {
-			log.Println("Error unpacking", er)
+		err = json.Unmarshal(buf[:l], &m)
+		if err != nil {
+			log.Println("JSON unpacking:", err)
 		} else {
 			m.TimeRecv = time.Now()
 			recieved <- m
