@@ -33,7 +33,7 @@ func RunLift(quit *chan bool) {
 	liftStatus = <-status
 	ticker1 := time.NewTicker(10 * time.Millisecond).C
 	ticker2 := time.NewTicker(5 * time.Millisecond).C
-	log.Println("Up and running. My is is: ", myID, "Penalty time is: ", myPenalty)
+	log.Println("Up and running. My id is:", myID, "Penalty time is:", myPenalty)
 	for {
 		select {
 		case button := <-buttonPress:

@@ -188,14 +188,11 @@ func updateStatus(currentFloor uint, status *LiftStatus) {
 		}
 		return
 	case 1, MAXFLOOR:
-		log.Println("Maxfloor")
 		motor <- motorType{0, status.Direction}
 		status.Floor = currentFloor
 		status.Running = false
 		*floorch <- *status
-		log.Println("Floor range")
 	case 2, 3:
-		log.Println("Floor 2,3")
 		if currentFloor != status.Floor {
 			status.Floor = currentFloor
 			*floorch <- *status

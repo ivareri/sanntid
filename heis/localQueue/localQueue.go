@@ -6,14 +6,14 @@ import (
 	"log"
 )
 
+const maxFloor = 4
 type OrderQueue struct {
-	Up      [4]bool // Requests
-	Down    [4]bool // Requests
-	Command [4]bool // Commands
+	Up      [maxFloor]bool // Requests
+	Down    [maxFloor]bool // Requests
+	Command [maxFloor]bool // Commands
 }
 
 const backupFile = "backupQueue.q"
-
 var localQueue = OrderQueue{}
 
 // Called by liftControl
@@ -25,7 +25,7 @@ func writeQueueToFile() {
 	}
 	err = ioutil.WriteFile(backupFile, commandQueue, 0600)
 	if err != nil {
-		log.Println("Error wirting to file", err)
+		log.Println("Error wirting to backupfile", err)
 	}
 }
 
@@ -34,11 +34,11 @@ func writeQueueToFile() {
 func ReadQueueFromFile() []bool {
 	byt, err := ioutil.ReadFile(backupFile)
 	if err != nil {
-		log.Println("Error reading from backupfile", err)
+		log.Println("Error opening backupfile", err)
 	}
 	var cmd []bool
 	if err := json.Unmarshal(byt, &cmd); err != nil {
-		log.Println("Error during unmarshal: ", err)
+		log.Println("JSON: ", err)
 		log.Println("Got: ", cmd)
 	}
 	return cmd
@@ -61,7 +61,7 @@ func AddLocalRequest(floor uint, direction bool) {
 	}
 }
 
-// TODO: Called by ...
+// Called by liftControl
 // Deletes requests reassigned to other lifts from localQueue
 func DeleteLocalRequest(floor uint, Direction bool){
 	if Direction{
@@ -88,20 +88,20 @@ func DeleteLocalOrder(floor uint, Direction bool) {
 // and bool indicating that order is above/below currentFloor
 func GetOrder(currentFloor uint, direction bool) (uint, bool) {
 	if direction {
-		if nextStop := checkUp(currentFloor, 4); nextStop > 0 {
+		if nextStop := checkUp(currentFloor, maxFloor); nextStop > 0 {
 			return nextStop, true
-		} else if nextStop := checkDown(4, 1); nextStop > 0 {
+		} else if nextStop := checkDown(maxFloor, 1); nextStop > 0 {
 			return nextStop, false
 		} else {
-			return checkUp(1, 4), true
+			return checkUp(1, maxFloor), true
 		}
 	} else {
 		if nextStop := checkDown(currentFloor, 1); nextStop > 0 {
 			return nextStop, false
-		} else if nextStop := checkUp(1, 4); nextStop > 0 {
+		} else if nextStop := checkUp(1, maxFloor); nextStop > 0 {
 			return nextStop, true
 		} else {
-			return checkDown(4, 1), false
+			return checkDown(maxFloor, 1), false
 		}
 	}
 }
@@ -110,8 +110,8 @@ func GetOrder(currentFloor uint, direction bool) (uint, bool) {
 // Returns floor for next order above current in Up queue or 0 if empty
 func checkUp(start uint, stop uint) uint {
 	for i := int(start) - 1; i <= int(stop)-1; i++ {
-		if i > 3 || i < 0 {
-			log.Println("Out of bounds UP. Stop: ", stop, " start: ", start, " i: ", i)
+		if i > maxFloor-1 || i < 0 {
+			log.Println("In localqueue, checkUp out of bounds. Stop: ", stop, " start: ", start, " i: ", i)
 			return 0
 		} else if localQueue.Up[i] || localQueue.Command[i] {
 			return uint(i + 1)
@@ -124,8 +124,8 @@ func checkUp(start uint, stop uint) uint {
 // Returns floor for next floor order below current in Down queue or 0 if empty
 func checkDown(start uint, stop uint) uint {
 	for i := int(start) - 1; i >= int(stop)-1; i-- {
-		if i > 3 || i < 0 {
-			log.Println("Out of bounds Down. Stop: ", stop, " start: ", start, " i: ", i)
+		if i > maxFloor-1 || i < 0 {
+			log.Println("in localqueue, checkDown out of bounds. Stop: ", stop, " start: ", start, " i: ", i)
 			return 0
 		} else if localQueue.Down[i] || localQueue.Command[i] {
 			return uint(i + 1)
